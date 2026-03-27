@@ -300,8 +300,14 @@ npm run build
 | `api` A | `164.92.231.175` (DigitalOcean) |
 
 ### Variables d'environnement clés (prod)
-- `.env` Laravel : géré via Ploi → Edit environment
-- Vercel : `NEXT_PUBLIC_API_URL=https://api.institut-fitra.com`
+- `.env` Laravel : géré via Ploi → Edit environment (fichier créé le 27/03/2026)
+- Vercel : `NEXT_PUBLIC_API_URL=https://api.institut-fitra.com/api`
+
+### Config Nginx personnalisée (prod)
+- CORS géré au niveau Nginx dans `location /` (OPTIONS → 204)
+- Fichier principal : `/etc/nginx/sites-available/api.institut-fitra.com`
+- `backend/config/cors.php` présent (allowed_origins: app, www, institut-fitra.com)
+- `bootstrap/app.php` : `HandleCors` middleware explicitement prepend
 
 ---
 
@@ -320,8 +326,17 @@ npm run build
 - Formulaires de suivi (tracking forms)
 - Responsive mobile espace élève
 - **Déploiement production** (DigitalOcean + Ploi + Vercel)
+- DNS tous verts (Hostinger + Vercel)
+- SSL tous domaines ✓ (api via Let's Encrypt/Ploi, app/www/@ via Vercel)
+- Migrations BDD exécutées en prod
+- Compte admin créé : `lekfif.oussama@gmail.com`
+- CORS résolu (Nginx + Laravel HandleCors)
+- Auto-deploy GitHub → Ploi (webhook configuré)
+
+### ⏳ À finaliser (prod)
+- **Stripe live keys** : mettre `stripe_secret_key` et `stripe_webhook_secret` dans table `settings`, configurer webhook `https://api.institut-fitra.com/api/stripe/webhook` sur dashboard.stripe.com
+- **Emails** : configurer Resend (ou autre) dans `.env` Laravel via Ploi → `MAIL_MAILER`, `RESEND_API_KEY`, etc.
 
 ### ⏳ À développer
 - **Phase 6** : Espace Professeur (API ready, frontend absent)
 - **Phase 7** : App Mobile Flutter
-- **Finalisation prod** : SSL `app.institut-fitra.com`, compte admin initial, Stripe live keys, Resend email
