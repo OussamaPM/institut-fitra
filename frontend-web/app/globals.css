@@ -1,0 +1,191 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-playfair: 'Playfair Display', serif;
+    --font-inter: 'Inter', sans-serif;
+    --font-amiri: 'Amiri', serif;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  * {
+    @apply border-secondary/10;
+  }
+
+  body {
+    @apply bg-background text-secondary antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-playfair;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-primary/90 focus:ring-primary;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-white hover:bg-secondary/90 focus:ring-secondary;
+  }
+
+  .btn-outline {
+    @apply border border-primary text-primary hover:bg-primary/5 focus:ring-primary;
+  }
+
+  .btn-disabled {
+    @apply bg-disabled text-white cursor-not-allowed;
+  }
+
+  .input {
+    @apply w-full px-4 py-2 border border-gray-300 rounded-lg bg-card text-secondary focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200;
+  }
+
+  .input-error {
+    @apply border-error focus:ring-error focus:border-error;
+  }
+
+  .card {
+    @apply bg-card rounded-xl shadow-md p-6;
+  }
+
+  .badge {
+    @apply inline-block px-2 py-0.5 text-xs font-bold rounded-full;
+  }
+
+  .badge-primary {
+    @apply bg-badge text-primary;
+  }
+
+  .badge-success {
+    @apply bg-success/10 text-success;
+  }
+
+  .badge-warning {
+    @apply bg-warning/10 text-warning;
+  }
+
+  .badge-error {
+    @apply bg-error/10 text-error;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* React Big Calendar Customization */
+.rbc-calendar {
+  @apply font-inter;
+}
+
+.rbc-header {
+  @apply bg-gradient-to-b from-primary/10 to-primary/5 py-4 border-b-2 border-primary/20 font-bold text-secondary text-sm uppercase tracking-wide;
+}
+
+.rbc-today {
+  @apply bg-primary/10;
+}
+
+.rbc-event {
+  @apply rounded-md shadow-md border-l-4 border-opacity-80 font-medium text-xs;
+  padding: 4px 6px !important;
+}
+
+.rbc-event:hover {
+  @apply shadow-lg scale-105 transition-transform duration-200;
+}
+
+.rbc-event:focus {
+  @apply outline-none ring-2 ring-primary/50;
+}
+
+.rbc-toolbar {
+  @apply mb-6 pb-4 border-b-2 border-gray-200;
+}
+
+.rbc-toolbar button {
+  @apply px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 border-2 border-transparent;
+}
+
+.rbc-toolbar button:hover {
+  @apply bg-primary/10 border-primary/20;
+}
+
+.rbc-toolbar button.rbc-active {
+  @apply bg-primary text-white shadow-md border-primary;
+}
+
+.rbc-toolbar-label {
+  @apply text-xl font-bold text-secondary;
+}
+
+.rbc-month-view {
+  @apply border-2 border-gray-200 rounded-xl overflow-hidden shadow-sm;
+}
+
+.rbc-day-bg {
+  @apply border-r border-b border-gray-100;
+  transition: background-color 0.2s;
+}
+
+.rbc-day-bg:hover {
+  @apply bg-gray-50;
+}
+
+.rbc-off-range-bg {
+  @apply bg-gray-50/50;
+}
+
+.rbc-current {
+  @apply bg-primary/10 font-bold;
+}
+
+.rbc-date-cell {
+  @apply text-sm font-semibold;
+}
+
+.rbc-now .rbc-button-link {
+  @apply text-primary font-bold;
+}
+
+.rbc-time-view {
+  @apply border-2 border-gray-200 rounded-xl overflow-hidden;
+}
+
+.rbc-time-header {
+  @apply border-b-2 border-gray-200;
+}
+
+.rbc-time-content {
+  @apply border-t-2 border-gray-200;
+}
+
+.rbc-agenda-view {
+  @apply border-2 border-gray-200 rounded-xl overflow-hidden;
+}
+
+.rbc-agenda-table {
+  @apply text-sm;
+}
+
+.rbc-agenda-date-cell,
+.rbc-agenda-time-cell {
+  @apply font-semibold text-secondary;
+}
+
+.rbc-show-more {
+  @apply text-primary font-semibold hover:underline text-xs;
+}
