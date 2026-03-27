@@ -12,7 +12,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE notifications MODIFY COLUMN type ENUM('session','message','enrollment','material','payment','level','tracking','other') NOT NULL");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE notifications MODIFY COLUMN type ENUM('session','message','enrollment','material','payment','level','tracking','other') NOT NULL");
+        }
     }
 
     /**
@@ -20,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE notifications MODIFY COLUMN type ENUM('session','message','enrollment','material','payment','level','other') NOT NULL");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE notifications MODIFY COLUMN type ENUM('session','message','enrollment','material','payment','level','other') NOT NULL");
+        }
     }
 };
