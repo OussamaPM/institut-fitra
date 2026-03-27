@@ -311,7 +311,7 @@ npm run build
 
 ---
 
-## 11. État du Projet (27/03/2026)
+## 11. État du Projet (28/03/2026)
 
 ### ✅ Complété
 - Auth + BDD + modèles Laravel
@@ -332,11 +332,27 @@ npm run build
 - Compte admin créé : `lekfif.oussama@gmail.com`
 - CORS résolu (Nginx + Laravel HandleCors)
 - Auto-deploy GitHub → Ploi (webhook configuré)
+- **Harmonisation site vitrine** : containers uniformisés (`max-w-7xl`), espacement vertical responsive, polices titres standardisées (`font-playfair`) sur toutes les sections
+- Page À propos : "Oustadh" → "Cheikh Abdelbasset"
+- **Emails transactionnels** : Resend configuré, domaine `institut-fitra.com` vérifié, envoi depuis `noreply@institut-fitra.com`
+- **Mot de passe oublié / reset** : `POST /api/auth/forgot-password` + `POST /api/auth/reset-password`, token 60 min, pages frontend `/auth/forgot-password` et `/auth/reset-password`
 
 ### ⏳ À finaliser (prod)
 - **Stripe live keys** : mettre `stripe_secret_key` et `stripe_webhook_secret` dans table `settings`, configurer webhook `https://api.institut-fitra.com/api/stripe/webhook` sur dashboard.stripe.com
-- **Emails** : configurer Resend (ou autre) dans `.env` Laravel via Ploi → `MAIL_MAILER`, `RESEND_API_KEY`, etc.
+
+### ⏳ À développer (emails)
+- **Confirmation d'inscription** : email quand une `Enrollment` passe en `active`
+- **Email identifiants après paiement** : envoyé par `StripeService` après paiement validé (TODO existant)
 
 ### ⏳ À développer
 - **Phase 6** : Espace Professeur (API ready, frontend absent)
 - **Phase 7** : App Mobile Flutter
+
+### Variables d'environnement prod (complètes)
+```
+MAIL_MAILER=resend
+RESEND_API_KEY=re_...
+MAIL_FROM_ADDRESS=noreply@institut-fitra.com
+MAIL_FROM_NAME="Institut Fitra"
+FRONTEND_URL=https://app.institut-fitra.com
+```
