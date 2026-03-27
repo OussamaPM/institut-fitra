@@ -2,8 +2,8 @@ import Link from 'next/link';
 
 export default function CTASection() {
   return (
-    <section className="py-10 sm:py-12 md:py-16 bg-gradient-to-r from-primary to-primary/80 text-white">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4 sm:space-y-6">
+    <section className="py-12 sm:py-16 md:py-24 bg-gradient-to-r from-primary to-primary/80 text-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center space-y-4 sm:space-y-6">
         <h2 className="font-playfair text-2xl sm:text-3xl md:text-4xl font-bold">
           Prêt à commencer votre cheminement ?
         </h2>

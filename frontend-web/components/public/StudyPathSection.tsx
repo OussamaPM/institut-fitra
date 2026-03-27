@@ -2,9 +2,10 @@
 
 export default function StudyPathSection() {
   return (
-    <section className="max-w-5xl mx-auto px-4 pt-10 pb-24">
+    <section className="py-12 sm:py-16 md:py-24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
       <div className="text-center mb-16">
-        <h2 className="text-4xl font-serif text-secondary mb-4">Le Parcours d'Études</h2>
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-playfair font-bold text-secondary mb-4">Le Parcours d'Études</h2>
         <p className="text-gray-500 max-w-xl mx-auto">
           Un cursus structuré en trois étapes progressives, pour bâtir une connaissance solide et durable.
         </p>
@@ -30,7 +31,7 @@ export default function StudyPathSection() {
           </div>
           <div className="bg-gray-50 p-8 rounded-2xl border-l-4 border-transparent hover:border-primary hover:bg-white hover:shadow-lg transition-all duration-300">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-2">
-              <h3 className="text-2xl font-serif text-secondary">Le Tronc Commun</h3>
+              <h3 className="text-xl sm:text-2xl font-playfair font-bold text-secondary">Le Tronc Commun</h3>
               <span
                 className="text-white text-sm font-bold px-4 py-1 rounded-full mt-2 md:mt-0 italic shadow-sm"
                 style={{ backgroundColor: '#7B5A4B' }}
@@ -105,7 +106,7 @@ export default function StudyPathSection() {
             style={{ borderColor: 'rgba(123,90,75,0.2)', borderLeftColor: 'transparent' }}
           >
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-2">
-              <h3 className="text-2xl font-serif text-secondary">Le Cycle d'Approfondissement</h3>
+              <h3 className="text-xl sm:text-2xl font-playfair font-bold text-secondary">Le Cycle d'Approfondissement</h3>
               <span
                 className="text-white text-sm font-bold px-4 py-1 rounded-full mt-2 md:mt-0 shadow-sm"
                 style={{ backgroundColor: '#7B5A4B' }}
@@ -194,7 +195,7 @@ export default function StudyPathSection() {
 
             <div className="relative z-10">
               <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
-                <h3 className="text-2xl font-serif">Programmes de Spécialisation</h3>
+                <h3 className="text-xl sm:text-2xl font-playfair font-bold">Programmes de Spécialisation</h3>
                 <span
                   className="text-white text-sm font-bold px-4 py-1 rounded-full mt-2 md:mt-0 italic shadow-sm"
                   style={{ backgroundColor: '#7B5A4B' }}
@@ -226,6 +227,7 @@ export default function StudyPathSection() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </section>
   );

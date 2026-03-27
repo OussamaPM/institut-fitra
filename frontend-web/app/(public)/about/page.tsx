@@ -220,7 +220,7 @@ export default async function AboutPage() {
               Direction et Enseignement
             </h3>
             <p className="text-gray-600 text-sm sm:text-base mb-6 leading-relaxed">
-              Le cursus est placé sous la direction d'<strong className="text-secondary">Oustadh Abdelbasset</strong>,
+              Le cursus est placé sous la direction de <strong className="text-secondary">Cheikh Abdelbasset</strong>,
               dont le parcours académique et spirituel allie tradition et rigueur universitaire :
             </p>
 
