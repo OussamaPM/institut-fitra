@@ -1,0 +1,13 @@
+# Fichiers sensibles
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Images/assets bruts (pas nécessaires sur git)
+*.psd
