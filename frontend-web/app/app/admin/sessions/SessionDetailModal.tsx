@@ -149,8 +149,8 @@ export default function SessionDetailModal({
     try {
       setSavingReplay(true);
       const updatedSession = await sessionsApi.update(currentSession.id, {
-        replay_url: replayUrl || null,
-        replay_validity_days: replayUrl ? replayValidityDays : null,
+        replay_url: replayUrl || undefined,
+        replay_validity_days: replayUrl ? replayValidityDays : undefined,
       });
       setCurrentSession(updatedSession);
       setShowReplayForm(false);
@@ -173,7 +173,7 @@ export default function SessionDetailModal({
       setSavingReplay(true);
       const updatedSession = await sessionsApi.update(currentSession.id, {
         replay_url: '',
-        replay_validity_days: null,
+        replay_validity_days: undefined,
       });
       setCurrentSession(updatedSession);
       setReplayUrl('');
@@ -458,8 +458,12 @@ export default function SessionDetailModal({
                   <input
                     type="text"
                     value={replayUrl}
-                    onChange={(e) => setReplayUrl(e.target.value)}
-                    placeholder="https://player.vimeo.com/video/..."
+                    onChange={(e) => {
+                      const val = e.target.value.trim();
+                      const srcMatch = val.match(/src=["']([^"']+)["']/);
+                      setReplayUrl(srcMatch ? srcMatch[1].split('?')[0] : val.split('?')[0]);
+                    }}
+                    placeholder="https://player.vimeo.com/video/... ou coller le code embed complet"
                     className="input w-full text-sm"
                   />
                   <div className="flex items-center gap-2">
