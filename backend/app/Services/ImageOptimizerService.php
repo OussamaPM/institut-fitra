@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Intervention\Image\Laravel\Facades\Image;
@@ -52,12 +53,31 @@ class ImageOptimizerService
     }
 
     /**
-     * Delete a file from Spaces.
+     * Delete a file from Spaces (or public disk as fallback for legacy files).
      */
-    public function delete(string $path): void
+    public function delete(?string $path): void
     {
-        if ($path && Storage::disk('spaces')->exists($path)) {
-            Storage::disk('spaces')->delete($path);
+        if (! $path) {
+            return;
+        }
+
+        // Try Spaces first
+        try {
+            if (Storage::disk('spaces')->exists($path)) {
+                Storage::disk('spaces')->delete($path);
+                return;
+            }
+        } catch (\Exception $e) {
+            Log::warning("ImageOptimizerService: could not delete {$path} from Spaces: ".$e->getMessage());
+        }
+
+        // Fallback: try legacy public disk (old files before Spaces migration)
+        try {
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+        } catch (\Exception $e) {
+            Log::warning("ImageOptimizerService: could not delete {$path} from public disk: ".$e->getMessage());
         }
     }
 
