@@ -336,13 +336,12 @@ npm run build
 - Page À propos : "Oustadh" → "Cheikh Abdelbasset"
 - **Emails transactionnels** : Resend configuré, domaine `institut-fitra.com` vérifié, envoi depuis `noreply@institut-fitra.com`
 - **Mot de passe oublié / reset** : `POST /api/auth/forgot-password` + `POST /api/auth/reset-password`, token 60 min, pages frontend `/auth/forgot-password` et `/auth/reset-password`
+- **Confirmation d'inscription** : `EnrollmentConfirmationMail` — déclenché à la création manuelle, au passage en `active`, et après paiement Stripe
+- **Identifiants nouveau compte** : `NewAccountCredentialsMail` — envoyé par `StripeService` lors de la création d'un nouveau compte élève après paiement
+- **Logo emails** : PNG fond blanc (`backend/public/logo-email.png`) servi depuis `api.institut-fitra.com/logo-email.png`
 
 ### ⏳ À finaliser (prod)
 - **Stripe live keys** : mettre `stripe_secret_key` et `stripe_webhook_secret` dans table `settings`, configurer webhook `https://api.institut-fitra.com/api/stripe/webhook` sur dashboard.stripe.com
-
-### ⏳ À développer (emails)
-- **Confirmation d'inscription** : email quand une `Enrollment` passe en `active`
-- **Email identifiants après paiement** : envoyé par `StripeService` après paiement validé (TODO existant)
 
 ### ⏳ À développer
 - **Phase 6** : Espace Professeur (API ready, frontend absent)
