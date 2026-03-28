@@ -10,7 +10,7 @@ Admin    → Web App (Next.js)        ─┘
 
 - **Backend** : Laravel 12, PHP 8.4, MySQL, Sanctum — port 8000 (local) / `api.institut-fitra.com` (prod)
 - **Frontend** : Next.js 14 (App Router), TypeScript, Tailwind CSS — port 3000 (local) / Vercel (prod)
-- **Intégrations** : Stripe (paiements), Vimeo (replays)
+- **Intégrations** : Stripe (paiements), Vimeo (replays), DigitalOcean Spaces (stockage fichiers + CDN)
 - **Sous-domaines local** : `localhost:3000` → vitrine public | `app.localhost:3000` → backoffice
 - **Sous-domaines prod** : `institut-fitra.com` → vitrine | `app.institut-fitra.com` → backoffice | `api.institut-fitra.com` → API Laravel
 
@@ -23,7 +23,7 @@ institut-fitra/
 ├── backend/
 │   ├── app/Models/            # User, Program, ClassModel, Session, Enrollment, Order...
 │   ├── app/Http/Controllers/  # Auth, Program, Class, Session, Enrollment, Attendance, Order...
-│   ├── app/Services/          # SessionGeneratorService, StripeService, ProgramLevelService
+│   ├── app/Services/          # SessionGeneratorService, StripeService, ProgramLevelService, ImageOptimizerService
 │   └── routes/api.php
 │
 └── frontend-web/
@@ -227,6 +227,17 @@ POST  /api/student/tracking/{id}/submit
 - Webhook `invoice.paid` : skip si `billing_reason === 'subscription_create'` (première facture déjà traitée)
 - Régularisation paiements échoués : crée un NOUVEAU paiement (`is_recovery_payment=true`), le paiement échoué reste intact
 
+### Stockage fichiers — DigitalOcean Spaces
+- **Disk** : `spaces` (driver S3, bucket `institut-fitra-media`, région `fra1`)
+- **CDN** : `https://institut-fitra-media.fra1.cdn.digitaloceanspaces.com`
+- **Service** : `ImageOptimizerService` — conversion WebP via GD natif PHP (pas intervention/image)
+  - Photos de profil → crop 400×400, WebP 80%
+  - Images messages → scale max 1200px, WebP 80%
+  - PDF/audio → upload direct sans traitement
+- **Accesseur** `profile_photo_url` sur `StudentProfile` et `TeacherProfile` : détecte `.webp` → URL Spaces CDN, autres extensions → URL disk `public` (anciens fichiers)
+- **Variables `.env`** : `DO_SPACES_KEY`, `DO_SPACES_SECRET`, `DO_SPACES_REGION=fra1`, `DO_SPACES_BUCKET`, `DO_SPACES_ENDPOINT`, `DO_SPACES_CDN_ENDPOINT`, `FILESYSTEM_DISK=spaces`
+- Anciens fichiers (`.jpg`/`.png`) restent sur le disk `public` local — pas de migration nécessaire
+
 ### Format réponses API
 ```php
 response()->json(['class' => $class])      // ClassController
@@ -342,6 +353,7 @@ npm run build
 - **Page maintenance** : verset Sourate Ar-Rum [30] — s'affiche sur toutes les routes publiques (géré dans `(public)/layout.tsx`)
 - **Bouton Connexion header** : redirige vers `app.[domaine]/auth/login` (corrigé pour `www.` et sous-domaine `app`)
 - **Tronc Commun** : bloc Fikr ajouté (pleine largeur, 5ème matière)
+- **Stockage Spaces** : photos de profil, supports de cours, pièces jointes messages → DigitalOcean Spaces CDN (WebP automatique)
 
 ### ⏳ À finaliser (prod)
 - **Stripe live keys** : mettre `stripe_secret_key` et `stripe_webhook_secret` dans table `settings`, configurer webhook `https://api.institut-fitra.com/api/stripe/webhook` sur dashboard.stripe.com
