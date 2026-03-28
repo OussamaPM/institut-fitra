@@ -232,26 +232,28 @@ class UserController extends Controller
                 ]);
             }
 
-            if (($user->role === 'teacher' || $user->role === 'admin') && $user->teacherProfile) {
+            if ($user->role === 'teacher' || $user->role === 'admin') {
                 // Handle profile photo upload for teacher/admin
-                $teacherProfilePhotoPath = $user->teacherProfile->profile_photo;
+                $teacherProfilePhotoPath = $user->teacherProfile?->profile_photo;
                 if ($request->hasFile('profile_photo')) {
-                    // Delete old photo if exists
                     if ($teacherProfilePhotoPath) {
                         Storage::disk('public')->delete($teacherProfilePhotoPath);
                     }
                     $teacherProfilePhotoPath = $request->file('profile_photo')->store('profile-photos', 'public');
                 }
 
-                $user->teacherProfile->update([
-                    'first_name' => $validated['first_name'] ?? $user->first_name,
-                    'last_name' => $validated['last_name'] ?? $user->last_name,
-                    'gender' => $validated['gender'] ?? $user->teacherProfile->gender,
-                    'profile_photo' => $teacherProfilePhotoPath,
-                    'phone' => $validated['phone'] ?? $user->teacherProfile->phone,
-                    'specialization' => $validated['specialization'] ?? $user->teacherProfile->specialization,
-                    'bio' => $validated['bio'] ?? $user->teacherProfile->bio,
-                ]);
+                $user->teacherProfile()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'first_name' => $validated['first_name'] ?? $user->first_name,
+                        'last_name' => $validated['last_name'] ?? $user->last_name,
+                        'gender' => $validated['gender'] ?? $user->teacherProfile?->gender,
+                        'profile_photo' => $teacherProfilePhotoPath,
+                        'phone' => $validated['phone'] ?? $user->teacherProfile?->phone,
+                        'specialization' => $validated['specialization'] ?? $user->teacherProfile?->specialization,
+                        'bio' => $validated['bio'] ?? $user->teacherProfile?->bio,
+                    ]
+                );
             }
 
             $user->load(['studentProfile', 'teacherProfile']);
