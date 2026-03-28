@@ -1,5 +1,6 @@
 import PublicHeader from '@/components/layout/PublicHeader';
 import PublicFooter from '@/components/layout/PublicFooter';
+import ComingSoon from '@/components/public/ComingSoon';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -24,9 +25,8 @@ export default async function PublicLayout({
 }) {
   const isComingSoon = await getComingSoonStatus();
 
-  // Mode Coming Soon : affichage plein écran sans header/footer
   if (isComingSoon) {
-    return <>{children}</>;
+    return <ComingSoon />;
   }
 
   return (
