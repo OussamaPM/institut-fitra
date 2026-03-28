@@ -13,7 +13,7 @@ export default function PublicHeader() {
 
   useEffect(() => {
     const protocol = window.location.protocol;
-    const hostname = window.location.hostname.replace(/^app\./, '');
+    const hostname = window.location.hostname.replace(/^(app\.|www\.)/, '');
     const port = window.location.port;
     const portSuffix = port ? `:${port}` : '';
     setLoginUrl(`${protocol}//app.${hostname}${portSuffix}/auth/login`);
