@@ -10,9 +10,12 @@ Admin    → Web App (Next.js)        ─┘
 
 - **Backend** : Laravel 12, PHP 8.4, MySQL, Sanctum — port 8000 (local) / `api.institut-fitra.com` (prod)
 - **Frontend** : Next.js 14 (App Router), TypeScript, Tailwind CSS — port 3000 (local) / Vercel (prod)
-- **Intégrations** : Stripe (paiements), Vimeo (replays), DigitalOcean Spaces (stockage fichiers + CDN)
-- **Sous-domaines local** : `localhost:3000` → vitrine public | `app.localhost:3000` → backoffice
+- **Stockage** : DigitalOcean Spaces (fichiers + CDN) — bucket `institut-fitra-media`, région `fra1`
+- **Vidéos** : Bunny Stream — l'admin colle l'URL embed ou le code HTML complet, le `src` est extrait automatiquement
+- **Paiements** : Stripe Checkout (unique, multi-versements, régularisation)
+- **Emails** : Resend — domaine `institut-fitra.com`, envoi depuis `noreply@institut-fitra.com`
 - **Sous-domaines prod** : `institut-fitra.com` → vitrine | `app.institut-fitra.com` → backoffice | `api.institut-fitra.com` → API Laravel
+- **Sous-domaines local** : `localhost:3000` → vitrine | `app.localhost:3000` → backoffice
 
 ---
 
@@ -27,11 +30,12 @@ institut-fitra/
 │   └── routes/api.php
 │
 └── frontend-web/
-    ├── app/(public)/          # Site vitrine (page, about, programs, contact)
-    ├── app/app/auth/          # Login
-    ├── app/app/admin/         # Dashboard, users, programs, classes, sessions, orders, messages...
-    ├── app/app/student/       # Dashboard, planning, supports, replays, messages, profile...
+    ├── app/(public)/          # Site vitrine (accueil, à propos, programmes, contact)
+    ├── app/app/auth/          # Login, mot de passe oublié, reset
+    ├── app/app/admin/         # Dashboard, users, programs, classes, sessions, orders, messages, tracking
+    ├── app/app/student/       # Dashboard, planning, supports, replays, messages, profil
     ├── components/layout/     # AdminSidebar, StudentSidebar
+    ├── components/ui/         # UserAvatar (gère URLs Spaces + legacy)
     ├── lib/api/               # Clients Axios par ressource
     ├── lib/types/index.ts     # Toutes les interfaces TypeScript
     └── middleware.ts          # Routing sous-domaines
@@ -58,14 +62,14 @@ institut-fitra/
 ```
 Program (template)
   ├── ProgramLevels (niveaux 2, 3, 4... — niveau 1 = programme lui-même)
-  │    └── ProgramLevelActivations (liaison niveau ↔ classe, remplace is_active)
+  │    └── ProgramLevelActivations (liaison niveau ↔ classe)
   └── ClassModel (instance annuelle, ex: "Promotion 2025/2026")
        ├── parent_class_id → ClassModel (hiérarchie promotions)
        ├── zoom_link (lien Zoom permanent — pas d'API Zoom)
        ├── Enrollments
        └── Sessions
-            ├── SessionMaterials (PDF/images)
-            ├── replay_url + replay_validity_days + replay_added_at
+            ├── SessionMaterials (PDF/images → Spaces)
+            ├── replay_url (Bunny Stream ou Vimeo) + replay_validity_days + replay_added_at
             └── Attendances
 ```
 
@@ -74,8 +78,8 @@ Program (template)
 | Table | Champs clés |
 |-------|-------------|
 | `users` | id, email, password, role, first_name, last_name |
-| `student_profiles` | user_id, phone, date_of_birth, address, city, country, gender |
-| `teacher_profiles` | user_id, phone, specialization, bio, gender |
+| `student_profiles` | user_id, phone, date_of_birth, address, city, country, gender, profile_photo |
+| `teacher_profiles` | user_id, phone, specialization, bio, gender, profile_photo |
 | `programs` | name, description, teacher_id, schedule (JSON), price, max_installments, default_class_id |
 | `classes` | program_id, name, academic_year, start_date, end_date, max_students, status, zoom_link, **parent_class_id** |
 | `class_sessions` | class_id, teacher_id, title, scheduled_at, duration_minutes, status, replay_url, replay_validity_days, replay_added_at, color |
@@ -85,10 +89,10 @@ Program (template)
 | `messages` | sender_id, receiver_id, group_id, content, attachment_path, attachment_type, attachment_original_name, attachment_size, read_at, sent_at |
 | `message_groups` | name, type (program/class/custom), program_id, class_id, created_by |
 | `group_members` | group_id, user_id, joined_at |
-| `notifications` | user_id, type (enum: session/message/enrollment/material/payment/level/**tracking**/other), category, title, message, action_url, read_at |
+| `notifications` | user_id, type (session/message/enrollment/material/payment/level/tracking/other), title, message, action_url, read_at |
 | `orders` | student_id, program_id, class_id, customer_email, total_amount, installments_count, payment_method, status, stripe_checkout_session_id, level_number, program_level_id |
 | `order_payments` | order_id, amount, installment_number, status, scheduled_at, paid_at, stripe_payment_intent_id, recovery_for_payment_id, is_recovery_payment |
-| `program_levels` | program_id, level_number (2,3,4...), name, description, price, max_installments, schedule (JSON), teacher_id |
+| `program_levels` | program_id, level_number (≥2), name, description, price, max_installments, schedule (JSON), teacher_id |
 | `program_level_activations` | program_level_id, class_id, activated_by, activated_at |
 | `settings` | key, value (dont stripe_secret_key, stripe_webhook_secret) |
 
@@ -100,7 +104,7 @@ Program (template)
 
 ### Auth
 ```
-POST /api/auth/register | login | logout
+POST /api/auth/register | login | logout | forgot-password | reset-password
 GET  /api/auth/me
 ```
 
@@ -112,8 +116,8 @@ GET              /api/programs/teachers
 
 GET/POST         /api/programs/{program}/levels
 GET/PUT/DELETE   /api/programs/{program}/levels/{level}
-POST             /api/programs/{program}/levels/{level}/activate    # multi-classes
-POST             /api/programs/{program}/levels/{level}/deactivate  # ?class_id optionnel
+POST             /api/programs/{program}/levels/{level}/activate    # body: class_ids[]
+POST             /api/programs/{program}/levels/{level}/deactivate  # body: class_id (optionnel)
 ```
 
 ### Classes
@@ -157,12 +161,13 @@ DELETE          /api/messages/groups/{group}
 ```
 GET/POST/PUT/DELETE  /api/admin/orders | /orders/{id}
 GET                  /api/admin/orders/stats
-POST                 /api/admin/orders/manual
+POST                 /api/admin/orders/manual          # class_id obligatoire
 
 POST  /api/checkout/create-session | /checkout/reinscription
 POST  /api/stripe/webhook
 GET   /api/checkout/status
 POST  /api/student/stripe-portal
+POST  /api/checkout/recovery
 ```
 
 ### Admin Dashboard & Users
@@ -176,10 +181,9 @@ GET/PUT  /api/admin/contact-messages | /{id}
 
 ### Student
 ```
-GET   /api/student/materials | reinscriptions | levels-history
-GET   /api/student/failed-payments | payment-history
-POST  /api/checkout/recovery
-PUT   /api/student/profile
+GET  /api/student/materials | reinscriptions | levels-history
+GET  /api/student/failed-payments | payment-history
+PUT  /api/student/profile
 ```
 
 ### Tracking Forms
@@ -200,43 +204,47 @@ POST  /api/student/tracking/{id}/submit
 - Modification dates → **supprime TOUTES les sessions existantes** puis régénère
 - `SessionController::index()` accepte `per_page` (défaut 15 ; frontend planning utilise `per_page: 500`)
 
-### Replay Vimeo
+### Replays vidéo
 - Backend calcule et retourne `replay_expires_at` et `replay_valid` (bool)
-- Lien = iframe Vimeo (`https://player.vimeo.com/video/...`)
+- `replay_url` = URL embed du player (Bunny Stream ou Vimeo)
+- **Bunny Stream** : format `https://player.mediadelivery.net/embed/{library_id}/{video_id}`
+- L'admin peut coller l'URL directe **ou** le code HTML embed complet — le frontend extrait automatiquement le `src`
 
 ### Niveaux multi-classes (`program_level_activations`)
 - `is_active` et `default_class_id` supprimés de `program_levels`
-- Un niveau peut être actif sur plusieurs classes simultanément via la table de liaison
+- Un niveau peut être actif sur plusieurs classes simultanément
 - Activation → emails aux élèves N-1 de chaque classe ciblée
-- Routes : `activate` (body: `class_ids[]`) et `deactivate` (body: `class_id` optionnel)
 
 ### Hiérarchie des classes
 - `parent_class_id` sur `classes` pour relier les promotions entre elles
-- Page admin liste les classes groupées par programme, arborescence parent→enfants
+- Page admin : classes groupées par programme, arborescence parent→enfants
+
+### Commandes manuelles (admin)
+- `POST /api/admin/orders/manual` : `class_id` **obligatoire** — le `default_class_id` du programme n'est pas utilisé
+- Crée l'utilisateur élève si l'email n'existe pas, sinon vérifie qu'il n'est pas déjà inscrit à cette classe
 
 ### Messagerie — règles élèves
 - Les élèves **ne peuvent pas initier** de conversation, seulement répondre si un admin leur a écrit
-- Pièces jointes : images/PDF/audio, max 10 Mo, stockées dans `public/message-attachments/`
+- Pièces jointes : images/PDF/audio, max 10 Mo → stockées sur Spaces
 
-### Formulaires de suivi — notifications
-- `TrackingFormController::assign()` crée une `Notification` (type `tracking`) pour chaque élève nouvellement assigné
-- `GET /student/tracking/pending-count` retourne le nombre de formulaires actifs non complétés — utilisé par la sidebar pour afficher un point rouge sur "Mon suivi"
+### Formulaires de suivi
+- `TrackingFormController::assign()` crée une `Notification` (type `tracking`) pour chaque élève assigné
+- `GET /student/tracking/pending-count` → nombre de formulaires non complétés (badge rouge sidebar)
 
 ### Stripe
 - Clés lues depuis la table `settings` (pas `.env`) : `stripe_secret_key`, `stripe_webhook_secret`
-- Webhook `invoice.paid` : skip si `billing_reason === 'subscription_create'` (première facture déjà traitée)
-- Régularisation paiements échoués : crée un NOUVEAU paiement (`is_recovery_payment=true`), le paiement échoué reste intact
+- Webhook `invoice.paid` : skip si `billing_reason === 'subscription_create'`
+- Régularisation paiements échoués : crée un NOUVEAU paiement (`is_recovery_payment=true`)
 
 ### Stockage fichiers — DigitalOcean Spaces
-- **Disk** : `spaces` (driver S3, bucket `institut-fitra-media`, région `fra1`)
-- **CDN** : `https://institut-fitra-media.fra1.cdn.digitaloceanspaces.com`
-- **Service** : `ImageOptimizerService` — conversion WebP via GD natif PHP (pas intervention/image)
+- **Disk Laravel** : `spaces` (driver S3, `FILESYSTEM_DISK=spaces`)
+- **Service** : `ImageOptimizerService` via GD natif PHP (pas intervention/image)
   - Photos de profil → crop 400×400, WebP 80%
   - Images messages → scale max 1200px, WebP 80%
   - PDF/audio → upload direct sans traitement
-- **Accesseur** `profile_photo_url` sur `StudentProfile` et `TeacherProfile` : détecte `.webp` → URL Spaces CDN, autres extensions → URL disk `public` (anciens fichiers)
-- **Variables `.env`** : `DO_SPACES_KEY`, `DO_SPACES_SECRET`, `DO_SPACES_REGION=fra1`, `DO_SPACES_BUCKET`, `DO_SPACES_ENDPOINT`, `DO_SPACES_CDN_ENDPOINT`, `FILESYSTEM_DISK=spaces`
-- Anciens fichiers (`.jpg`/`.png`) restent sur le disk `public` local — pas de migration nécessaire
+- **Accesseur `profile_photo_url`** sur `StudentProfile` et `TeacherProfile` : `.webp` → URL Spaces CDN, autres extensions → URL disk `public` (anciens fichiers pré-migration)
+- **`UserAvatar`** : détecte automatiquement si l'URL est complète (Spaces) ou un chemin local (legacy)
+- **Variables `.env`** : `DO_SPACES_KEY`, `DO_SPACES_SECRET`, `DO_SPACES_REGION=fra1`, `DO_SPACES_BUCKET=institut-fitra-media`, `DO_SPACES_ENDPOINT=https://fra1.digitaloceanspaces.com`, `DO_SPACES_CDN_ENDPOINT=https://institut-fitra-media.fra1.cdn.digitaloceanspaces.com`
 
 ### Format réponses API
 ```php
@@ -294,8 +302,8 @@ npm run build
 
 ### Serveur
 - **DigitalOcean Droplet** : 2 Go RAM, Frankfurt, IP `164.92.231.175`
-- **Panel** : Ploi.io (gestion serveur, déploiement, SSL)
-- **Stack serveur** : Ubuntu 24.04, Nginx, PHP 8.4, MySQL 8.4, Redis
+- **Panel** : Ploi.io Basic (8 €/mois) — déploiement, SSL, Nginx
+- **Stack** : Ubuntu 24.04, Nginx, PHP 8.4, MySQL 8.4, Redis
 
 ### Déploiement
 - **Backend** : Ploi déploie depuis GitHub `main` → `/home/ploi/api.institut-fitra.com/backend/`
@@ -310,63 +318,43 @@ npm run build
 | `app` CNAME | `67e31593668c687c.vercel-dns-017.com.` (Vercel) |
 | `api` A | `164.92.231.175` (DigitalOcean) |
 
-### Variables d'environnement clés (prod)
-- `.env` Laravel : géré via Ploi → Edit environment (fichier créé le 27/03/2026)
+### Variables d'environnement clés
+- `.env` Laravel : géré via Ploi → Edit environment
 - Vercel : `NEXT_PUBLIC_API_URL=https://api.institut-fitra.com/api`
+- Emails : `MAIL_MAILER=resend`, `RESEND_API_KEY=re_...`, `MAIL_FROM_ADDRESS=noreply@institut-fitra.com`, `FRONTEND_URL=https://app.institut-fitra.com`
+- Spaces : `DO_SPACES_KEY`, `DO_SPACES_SECRET`, `DO_SPACES_REGION=fra1`, `DO_SPACES_BUCKET=institut-fitra-media`, `DO_SPACES_ENDPOINT`, `DO_SPACES_CDN_ENDPOINT`, `FILESYSTEM_DISK=spaces`
 
-### Config Nginx personnalisée (prod)
-- CORS géré au niveau Nginx dans `location /` (OPTIONS → 204)
-- Fichier principal : `/etc/nginx/sites-available/api.institut-fitra.com`
-- `backend/config/cors.php` présent (allowed_origins: app, www, institut-fitra.com)
-- `bootstrap/app.php` : `HandleCors` middleware explicitement prepend
+### Config Nginx (prod)
+- CORS géré au niveau Nginx (`location /` → OPTIONS 204)
+- Fichier : `/etc/nginx/sites-available/api.institut-fitra.com`
+- `backend/config/cors.php` : allowed_origins = app, www, institut-fitra.com
+- `bootstrap/app.php` : `HandleCors` middleware prepend explicite
 
 ---
 
-## 11. État du Projet (28/03/2026 — mis à jour)
+## 11. État du Projet (28/03/2026)
 
 ### ✅ Complété
-- Auth + BDD + modèles Laravel
-- Gestion classes (multi-instances, hiérarchie parent_class_id)
-- Génération auto sessions (Zoom lien manuel sur classe)
-- Espace Admin complet (dashboard, users, programs, classes, sessions, orders, messages, tracking)
-- Site vitrine (accueil, à propos, programmes, contact)
-- Espace Élève complet (dashboard, planning, supports, replays, messagerie, profil éditable)
+- Auth (login, register, forgot/reset password)
+- BDD complète + modèles Laravel + relations
+- Gestion programmes, niveaux multi-classes, classes (hiérarchie parent/enfant)
+- Génération automatique de sessions
+- Espace Admin : dashboard, users, programmes, classes, sessions, commandes, messages, tracking
+- Espace Élève : dashboard, planning, supports, replays, messagerie, profil éditable
 - Messagerie interne (directs + groupes + pièces jointes)
-- Stripe Checkout (paiement unique, en plusieurs fois, régularisation échecs)
-- Niveaux de programmes multi-classes avec système d'activation
+- Stripe Checkout (paiement unique, multi-versements, régularisation échecs)
 - Formulaires de suivi (tracking forms)
-- Responsive mobile espace élève
-- **Déploiement production** (DigitalOcean + Ploi + Vercel)
-- DNS tous verts (Hostinger + Vercel)
-- SSL tous domaines ✓ (api via Let's Encrypt/Ploi, app/www/@ via Vercel)
-- Migrations BDD exécutées en prod
-- Compte admin créé : `lekfif.oussama@gmail.com`
-- CORS résolu (Nginx + Laravel HandleCors)
-- Auto-deploy GitHub → Ploi (webhook configuré)
-- **Harmonisation site vitrine** : containers uniformisés (`max-w-7xl`), espacement vertical responsive, polices titres standardisées (`font-playfair`) sur toutes les sections
-- Page À propos : "Oustadh" → "Cheikh Abdelbasset"
-- **Emails transactionnels** : Resend configuré, domaine `institut-fitra.com` vérifié, envoi depuis `noreply@institut-fitra.com`
-- **Mot de passe oublié / reset** : `POST /api/auth/forgot-password` + `POST /api/auth/reset-password`, token 60 min, pages frontend `/auth/forgot-password` et `/auth/reset-password`
-- **Confirmation d'inscription** : `EnrollmentConfirmationMail` — déclenché à la création manuelle, au passage en `active`, et après paiement Stripe
-- **Identifiants nouveau compte** : `NewAccountCredentialsMail` — envoyé par `StripeService` lors de la création d'un nouveau compte élève après paiement
-- **Logo emails** : PNG fond blanc (`backend/public/logo-email.png`) servi depuis `api.institut-fitra.com/logo-email.png`
-- **Page maintenance** : verset Sourate Ar-Rum [30] — s'affiche sur toutes les routes publiques (géré dans `(public)/layout.tsx`)
-- **Bouton Connexion header** : redirige vers `app.[domaine]/auth/login` (corrigé pour `www.` et sous-domaine `app`)
-- **Tronc Commun** : bloc Fikr ajouté (pleine largeur, 5ème matière)
-- **Stockage Spaces** : photos de profil, supports de cours, pièces jointes messages → DigitalOcean Spaces CDN (WebP automatique)
+- Site vitrine (accueil, à propos, programmes, contact)
+- Emails transactionnels : confirmation inscription, identifiants nouveau compte, reset password
+- Déploiement production (DigitalOcean + Ploi + Vercel), DNS + SSL tous verts
+- Auto-deploy GitHub → Ploi + Vercel
+- Stockage DigitalOcean Spaces (photos, supports, pièces jointes) + conversion WebP automatique
+- Replays Bunny Stream : l'admin colle l'URL ou le code embed complet
+- Commandes manuelles : `class_id` sélectionnable directement sans `default_class_id`
 
 ### ⏳ À finaliser (prod)
-- **Stripe live keys** : mettre `stripe_secret_key` et `stripe_webhook_secret` dans table `settings`, configurer webhook `https://api.institut-fitra.com/api/stripe/webhook` sur dashboard.stripe.com
+- **Stripe live keys** : mettre `stripe_secret_key` + `stripe_webhook_secret` dans table `settings`, configurer webhook `https://api.institut-fitra.com/api/stripe/webhook`
 
 ### ⏳ À développer
 - **Phase 6** : Espace Professeur (API ready, frontend absent)
 - **Phase 7** : App Mobile Flutter
-
-### Variables d'environnement prod (complètes)
-```
-MAIL_MAILER=resend
-RESEND_API_KEY=re_...
-MAIL_FROM_ADDRESS=noreply@institut-fitra.com
-MAIL_FROM_NAME="Institut Fitra"
-FRONTEND_URL=https://app.institut-fitra.com
-```
