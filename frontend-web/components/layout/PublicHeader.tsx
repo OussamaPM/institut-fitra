@@ -3,21 +3,21 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 
 export default function PublicHeader() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [loginUrl, setLoginUrl] = useState('#');
 
-  const getLoginUrl = () => {
-    if (typeof window === 'undefined') return '#';
+  useEffect(() => {
     const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
+    const hostname = window.location.hostname.replace(/^app\./, '');
     const port = window.location.port;
     const portSuffix = port ? `:${port}` : '';
-    return `${protocol}//app.${hostname}${portSuffix}/auth/login`;
-  };
+    setLoginUrl(`${protocol}//app.${hostname}${portSuffix}/auth/login`);
+  }, []);
 
   const navLinks = [
     { href: '/', label: 'Accueil' },
@@ -65,7 +65,7 @@ export default function PublicHeader() {
               </Link>
             ))}
             <a
-              href={getLoginUrl()}
+              href={loginUrl}
               className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
             >
               Connexion
@@ -106,7 +106,7 @@ export default function PublicHeader() {
               </Link>
             ))}
             <a
-              href={getLoginUrl()}
+              href={loginUrl}
               className="block px-4 py-3 mt-2 text-center bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
             >
               Connexion
