@@ -6,16 +6,18 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\ImageOptimizerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
+    public function __construct(private ImageOptimizerService $imageOptimizer) {}
+
     /**
      * Get all users with pagination.
      */
@@ -113,7 +115,7 @@ class UserController extends Controller
                 // Handle profile photo upload
                 $profilePhotoPath = null;
                 if ($request->hasFile('profile_photo')) {
-                    $profilePhotoPath = $request->file('profile_photo')->store('profile-photos', 'public');
+                    $profilePhotoPath = $this->imageOptimizer->uploadProfilePhoto($request->file('profile_photo'), 'profile-photos');
                 }
 
                 $user->studentProfile()->create([
@@ -134,7 +136,7 @@ class UserController extends Controller
                 // Handle profile photo upload for teacher/admin
                 $teacherProfilePhotoPath = null;
                 if ($request->hasFile('profile_photo')) {
-                    $teacherProfilePhotoPath = $request->file('profile_photo')->store('profile-photos', 'public');
+                    $teacherProfilePhotoPath = $this->imageOptimizer->uploadProfilePhoto($request->file('profile_photo'), 'profile-photos');
                 }
 
                 $user->teacherProfile()->create([
@@ -211,11 +213,8 @@ class UserController extends Controller
                 // Handle profile photo upload
                 $profilePhotoPath = $user->studentProfile->profile_photo;
                 if ($request->hasFile('profile_photo')) {
-                    // Delete old photo if exists
-                    if ($profilePhotoPath) {
-                        Storage::disk('public')->delete($profilePhotoPath);
-                    }
-                    $profilePhotoPath = $request->file('profile_photo')->store('profile-photos', 'public');
+                    $this->imageOptimizer->delete($profilePhotoPath);
+                    $profilePhotoPath = $this->imageOptimizer->uploadProfilePhoto($request->file('profile_photo'), 'profile-photos');
                 }
 
                 $user->studentProfile->update([
@@ -236,10 +235,8 @@ class UserController extends Controller
                 // Handle profile photo upload for teacher/admin
                 $teacherProfilePhotoPath = $user->teacherProfile?->profile_photo;
                 if ($request->hasFile('profile_photo')) {
-                    if ($teacherProfilePhotoPath) {
-                        Storage::disk('public')->delete($teacherProfilePhotoPath);
-                    }
-                    $teacherProfilePhotoPath = $request->file('profile_photo')->store('profile-photos', 'public');
+                    $this->imageOptimizer->delete($teacherProfilePhotoPath);
+                    $teacherProfilePhotoPath = $this->imageOptimizer->uploadProfilePhoto($request->file('profile_photo'), 'profile-photos');
                 }
 
                 $user->teacherProfile()->updateOrCreate(

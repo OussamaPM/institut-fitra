@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Services\ImageOptimizerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class StudentProfileController extends Controller
 {
+    public function __construct(private ImageOptimizerService $imageOptimizer) {}
+
     /**
      * Update the authenticated student's profile information.
      */
@@ -74,12 +76,10 @@ class StudentProfileController extends Controller
             ]);
 
             // Delete old photo if exists
-            if ($user->studentProfile->profile_photo) {
-                Storage::disk('public')->delete($user->studentProfile->profile_photo);
-            }
+            $this->imageOptimizer->delete($user->studentProfile->profile_photo);
 
             // Store new photo
-            $profilePhotoPath = $request->file('profile_photo')->store('profile-photos', 'public');
+            $profilePhotoPath = $this->imageOptimizer->uploadProfilePhoto($request->file('profile_photo'), 'profile-photos');
 
             // Update profile
             $user->studentProfile->update([
@@ -92,7 +92,7 @@ class StudentProfileController extends Controller
             return response()->json([
                 'message' => 'Photo de profil mise à jour avec succès.',
                 'user' => $user,
-                'profile_photo_url' => Storage::disk('public')->url($profilePhotoPath),
+                'profile_photo_url' => $this->imageOptimizer->url($profilePhotoPath),
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to update profile photo: '.$e->getMessage());
@@ -120,7 +120,7 @@ class StudentProfileController extends Controller
 
             // Delete photo if exists
             if ($user->studentProfile->profile_photo) {
-                Storage::disk('public')->delete($user->studentProfile->profile_photo);
+                $this->imageOptimizer->delete($user->studentProfile->profile_photo);
 
                 $user->studentProfile->update([
                     'profile_photo' => null,

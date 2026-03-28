@@ -6,15 +6,18 @@ namespace App\Http\Controllers;
 
 use App\Models\Message;
 use App\Models\User;
+use App\Services\ImageOptimizerService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MessageController extends Controller
 {
+    public function __construct(private ImageOptimizerService $imageOptimizer) {}
+
     /**
      * Get conversations list for the authenticated user.
      * Returns a list of users with whom the user has exchanged messages.
@@ -232,13 +235,16 @@ class MessageController extends Controller
             if ($request->hasFile('file')) {
                 $file = $request->file('file');
                 $extension = strtolower($file->getClientOriginalExtension());
+                $isImage = in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
                 $attachmentType = match (true) {
-                    in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp']) => 'image',
+                    $isImage => 'image',
                     $extension === 'pdf' => 'pdf',
                     in_array($extension, ['mp3', 'ogg', 'wav']) => 'audio',
                     default => 'pdf',
                 };
-                $path = $file->store('message-attachments', 'public');
+                $path = $isImage
+                    ? $this->imageOptimizer->uploadMessageImage($file, 'message-attachments')
+                    : $this->imageOptimizer->uploadFile($file, 'message-attachments');
                 $attachmentData = [
                     'attachment_path' => $path,
                     'attachment_type' => $attachmentType,
@@ -327,10 +333,10 @@ class MessageController extends Controller
     }
 
     /**
-     * Download or stream the attachment of a message.
+     * Download or stream the attachment of a message (redirects to CDN URL).
      * Only the sender and receiver (or group members) can access it.
      */
-    public function downloadAttachment(Request $request, Message $message): StreamedResponse|JsonResponse
+    public function downloadAttachment(Request $request, Message $message): RedirectResponse|JsonResponse
     {
         try {
             $currentUser = $request->user();
@@ -353,14 +359,11 @@ class MessageController extends Controller
                 return response()->json(['message' => 'Ce message n\'a pas de pièce jointe.'], 404);
             }
 
-            if (! Storage::disk('public')->exists($message->attachment_path)) {
+            if (! Storage::disk('spaces')->exists($message->attachment_path)) {
                 return response()->json(['message' => 'Fichier introuvable.'], 404);
             }
 
-            $fileName = $message->attachment_original_name
-                ?? basename($message->attachment_path);
-
-            return Storage::disk('public')->download($message->attachment_path, $fileName);
+            return redirect($this->imageOptimizer->url($message->attachment_path));
         } catch (\Exception $e) {
             Log::error('Download attachment error: '.$e->getMessage());
 

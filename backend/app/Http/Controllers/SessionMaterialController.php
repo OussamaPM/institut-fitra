@@ -6,14 +6,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Session;
 use App\Models\SessionMaterial;
+use App\Services\ImageOptimizerService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SessionMaterialController extends Controller
 {
+    public function __construct(private ImageOptimizerService $imageOptimizer) {}
+
     /**
      * Liste tous les supports (pour admin/teacher)
      */
@@ -163,7 +166,7 @@ class SessionMaterialController extends Controller
             };
 
             // Stocker le fichier
-            $path = $file->store('session-materials/'.$session->id, 'public');
+            $path = $this->imageOptimizer->uploadFile($file, 'session-materials/'.$session->id);
 
             if (! $path) {
                 Log::error('SessionMaterial store - Failed to store file');
@@ -254,9 +257,9 @@ class SessionMaterialController extends Controller
     }
 
     /**
-     * Télécharger un fichier
+     * Télécharger un fichier (redirige vers l'URL CDN Spaces)
      */
-    public function download(Request $request, SessionMaterial $material): StreamedResponse|JsonResponse
+    public function download(Request $request, SessionMaterial $material): RedirectResponse|JsonResponse
     {
         try {
             $user = $request->user();
@@ -280,15 +283,13 @@ class SessionMaterialController extends Controller
                 ], 403);
             }
 
-            if (! Storage::disk('public')->exists($material->file_path)) {
+            if (! Storage::disk('spaces')->exists($material->file_path)) {
                 return response()->json([
                     'message' => 'Fichier non trouvé.',
                 ], 404);
             }
 
-            $fileName = $material->title.'.'.pathinfo($material->file_path, PATHINFO_EXTENSION);
-
-            return Storage::disk('public')->download($material->file_path, $fileName);
+            return redirect($this->imageOptimizer->url($material->file_path));
 
         } catch (\Exception $e) {
             Log::error('SessionMaterial download error: '.$e->getMessage());
@@ -316,9 +317,7 @@ class SessionMaterialController extends Controller
             }
 
             // Supprimer le fichier du storage
-            if (Storage::disk('public')->exists($material->file_path)) {
-                Storage::disk('public')->delete($material->file_path);
-            }
+            $this->imageOptimizer->delete($material->file_path);
 
             $material->delete();
 
