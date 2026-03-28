@@ -2,7 +2,7 @@
 <tr>
 <td class="header">
 <a href="{{ $url }}" style="display: inline-block;">
-<img src="https://institut-fitra.com/images/logo-fitra.webp" alt="Institut Fitra" style="height: 60px; width: auto; background-color: #ffffff; display: block;">
+<img src="https://api.institut-fitra.com/logo-email.png" alt="Institut Fitra" style="height: 70px; width: auto; display: block;">
 </a>
 </td>
 </tr>
