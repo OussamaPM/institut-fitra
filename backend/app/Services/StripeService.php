@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Mail\EnrollmentConfirmationMail;
 use App\Models\Enrollment;
 use App\Models\Notification;
 use App\Models\Order;
@@ -16,6 +17,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Stripe\Checkout\Session as StripeSession;
 use Stripe\Exception\ApiErrorException;
@@ -502,7 +504,7 @@ class StripeService
             ->first();
 
         if (! $existingEnrollment) {
-            Enrollment::create([
+            $enrollment = Enrollment::create([
                 'student_id' => $student->id,
                 'class_id' => $order->class_id,
                 'status' => 'active',
@@ -511,6 +513,14 @@ class StripeService
 
             $logType = $isReinscription ? 'Réinscription' : 'Inscription';
             Log::info("{$logType} créée pour student #{$student->id} dans class #{$order->class_id}");
+
+            // Envoyer l'email de confirmation d'inscription
+            try {
+                $enrollment->load('class.program');
+                Mail::to($student->email)->send(new EnrollmentConfirmationMail($student, $enrollment));
+            } catch (\Exception $e) {
+                Log::error('Enrollment confirmation email error (Stripe): '.$e->getMessage());
+            }
         }
     }
 

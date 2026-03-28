@@ -6,11 +6,14 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\EnrollmentRequest;
 use App\Http\Requests\EnrollmentUpdateRequest;
+use App\Mail\EnrollmentConfirmationMail;
 use App\Models\ClassModel;
 use App\Models\Enrollment;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class EnrollmentController extends Controller
 {
@@ -152,6 +155,16 @@ class EnrollmentController extends Controller
 
             $enrollment->load(['student.studentProfile', 'class.program.teacher.teacherProfile']);
 
+            // Envoyer l'email de confirmation
+            try {
+                $student = User::find($validated['student_id']);
+                if ($student) {
+                    Mail::to($student->email)->send(new EnrollmentConfirmationMail($student, $enrollment));
+                }
+            } catch (\Exception $e) {
+                Log::error('Enrollment confirmation email error: '.$e->getMessage());
+            }
+
             return response()->json([
                 'message' => 'Inscription créée avec succès.',
                 'enrollment' => $enrollment,
@@ -174,8 +187,20 @@ class EnrollmentController extends Controller
         try {
             $validated = $request->validated();
 
+            $wasActive = $enrollment->status === 'active';
             $enrollment->update($validated);
             $enrollment->load(['student.studentProfile', 'class.program.teacher.teacherProfile']);
+
+            // Envoyer l'email de confirmation si le statut vient de passer à active
+            if (! $wasActive && $enrollment->status === 'active') {
+                try {
+                    Mail::to($enrollment->student->email)->send(
+                        new EnrollmentConfirmationMail($enrollment->student, $enrollment)
+                    );
+                } catch (\Exception $e) {
+                    Log::error('Enrollment confirmation email error: '.$e->getMessage());
+                }
+            }
 
             return response()->json([
                 'message' => 'Inscription mise à jour avec succès.',
