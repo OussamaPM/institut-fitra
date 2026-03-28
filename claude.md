@@ -311,7 +311,7 @@ npm run build
 
 ---
 
-## 11. État du Projet (28/03/2026)
+## 11. État du Projet (28/03/2026 — mis à jour)
 
 ### ✅ Complété
 - Auth + BDD + modèles Laravel
@@ -339,6 +339,9 @@ npm run build
 - **Confirmation d'inscription** : `EnrollmentConfirmationMail` — déclenché à la création manuelle, au passage en `active`, et après paiement Stripe
 - **Identifiants nouveau compte** : `NewAccountCredentialsMail` — envoyé par `StripeService` lors de la création d'un nouveau compte élève après paiement
 - **Logo emails** : PNG fond blanc (`backend/public/logo-email.png`) servi depuis `api.institut-fitra.com/logo-email.png`
+- **Page maintenance** : verset Sourate Ar-Rum [30] — s'affiche sur toutes les routes publiques (géré dans `(public)/layout.tsx`)
+- **Bouton Connexion header** : redirige vers `app.[domaine]/auth/login` (corrigé pour `www.` et sous-domaine `app`)
+- **Tronc Commun** : bloc Fikr ajouté (pleine largeur, 5ème matière)
 
 ### ⏳ À finaliser (prod)
 - **Stripe live keys** : mettre `stripe_secret_key` et `stripe_webhook_secret` dans table `settings`, configurer webhook `https://api.institut-fitra.com/api/stripe/webhook` sur dashboard.stripe.com
