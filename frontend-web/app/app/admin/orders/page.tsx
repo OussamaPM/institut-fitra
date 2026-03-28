@@ -560,8 +560,8 @@ function AddManualOrderModal({ programs, onClose, onSuccess }: AddManualOrderMod
     e.preventDefault();
     setError('');
 
-    if (!formData.program_id || !formData.customer_first_name || !formData.customer_last_name || !formData.customer_email || !formData.customer_gender) {
-      setError('Veuillez remplir tous les champs obligatoires.');
+    if (!formData.program_id || !formData.class_id || !formData.customer_first_name || !formData.customer_last_name || !formData.customer_email || !formData.customer_gender) {
+      setError('Veuillez remplir tous les champs obligatoires (programme, classe, prénom, nom, email, genre).');
       return;
     }
 

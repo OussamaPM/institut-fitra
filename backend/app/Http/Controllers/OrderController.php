@@ -149,6 +149,7 @@ class OrderController extends Controller
     {
         $request->validate([
             'program_id' => 'required|exists:programs,id',
+            'class_id' => 'required|exists:classes,id',
             'customer_email' => 'required|email',
             'customer_first_name' => 'required|string|max:255',
             'customer_last_name' => 'required|string|max:255',
@@ -160,14 +161,8 @@ class OrderController extends Controller
 
         try {
             return DB::transaction(function () use ($request) {
-                // Récupérer le programme et sa classe par défaut
-                $program = Program::with('defaultClass')->findOrFail($request->program_id);
-
-                if (! $program->default_class_id) {
-                    return response()->json([
-                        'message' => 'Ce programme n\'a pas de classe par défaut configurée.',
-                    ], 422);
-                }
+                $program = Program::findOrFail($request->program_id);
+                $classId = (int) $request->class_id;
 
                 // Vérifier si l'email existe déjà
                 $existingUser = User::where('email', $request->customer_email)->first();
@@ -175,7 +170,7 @@ class OrderController extends Controller
                 if ($existingUser) {
                     // Vérifier si déjà inscrit à cette classe
                     $existingEnrollment = Enrollment::where('student_id', $existingUser->id)
-                        ->where('class_id', $program->default_class_id)
+                        ->where('class_id', $classId)
                         ->first();
 
                     if ($existingEnrollment) {
@@ -212,7 +207,7 @@ class OrderController extends Controller
                 $order = Order::create([
                     'student_id' => $student->id,
                     'program_id' => $program->id,
-                    'class_id' => $program->default_class_id,
+                    'class_id' => $classId,
                     'customer_email' => $request->customer_email,
                     'customer_first_name' => $request->customer_first_name,
                     'customer_last_name' => $request->customer_last_name,
@@ -235,7 +230,7 @@ class OrderController extends Controller
                 // Créer l'inscription à la classe
                 Enrollment::create([
                     'student_id' => $student->id,
-                    'class_id' => $program->default_class_id,
+                    'class_id' => $classId,
                     'status' => 'active',
                     'enrolled_at' => now(),
                 ]);
