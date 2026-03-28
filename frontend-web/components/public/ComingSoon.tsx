@@ -44,10 +44,9 @@ export default function ComingSoon() {
         {/* Citation islamique */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 md:p-8 shadow-lg max-w-xl mb-10 animate-fade-in-up animation-delay-400">
           <p className="font-amiri text-2xl md:text-3xl text-primary text-center mb-3 leading-relaxed">
-            « اطْلُبُوا الْعِلْمَ مِنَ الْمَهْدِ إِلَى اللَّحْدِ »
+            ﴿ فَأَقِمۡ وَجۡهَكَ لِلدِّینِ حَنِیفࣰاۚ فِطۡرَتَ ٱللَّهِ ٱلَّتِی فَطَرَ ٱلنَّاسَ عَلَیۡهَاۚ لَا تَبۡدِیلَ لِخَلۡقِ ٱللَّهِۚ ذَ ٰ⁠لِكَ ٱلدِّینُ ٱلۡقَیِّمُ وَلَـٰكِنَّ أَكۡثَرَ ٱلنَّاسِ لَا یَعۡلَمُونَ ﴾ [الروم ٣٠]
           </p>
           <p className="text-gray-600 text-center text-sm md:text-base italic">
-            "Cherchez la science du berceau jusqu'à la tombe"
           </p>
         </div>
 
