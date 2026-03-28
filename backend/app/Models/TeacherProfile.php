@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class TeacherProfile extends Model
 {
@@ -34,6 +35,21 @@ class TeacherProfile extends Model
         'zoom_access_token',
         'zoom_refresh_token',
     ];
+
+    protected $appends = ['profile_photo_url'];
+
+    public function getProfilePhotoUrlAttribute(): ?string
+    {
+        if (! $this->profile_photo) {
+            return null;
+        }
+
+        if (Storage::disk('spaces')->exists($this->profile_photo)) {
+            return Storage::disk('spaces')->url($this->profile_photo);
+        }
+
+        return Storage::disk('public')->url($this->profile_photo);
+    }
 
     /**
      * Get the user that owns the teacher profile.

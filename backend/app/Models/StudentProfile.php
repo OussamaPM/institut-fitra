@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class StudentProfile extends Model
 {
@@ -29,6 +30,22 @@ class StudentProfile extends Model
     protected $casts = [
         'date_of_birth' => 'date',
     ];
+
+    protected $appends = ['profile_photo_url'];
+
+    public function getProfilePhotoUrlAttribute(): ?string
+    {
+        if (! $this->profile_photo) {
+            return null;
+        }
+
+        // New files are on Spaces, old files are on local public disk
+        if (Storage::disk('spaces')->exists($this->profile_photo)) {
+            return Storage::disk('spaces')->url($this->profile_photo);
+        }
+
+        return Storage::disk('public')->url($this->profile_photo);
+    }
 
     /**
      * Get the user that owns the student profile.

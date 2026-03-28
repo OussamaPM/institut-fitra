@@ -259,7 +259,7 @@ export default function StudentSidebar({ isOpen, onClose }: StudentSidebarProps)
             firstName={firstName}
             lastName={lastName}
             gender={user?.student_profile?.gender}
-            profilePhoto={user?.student_profile?.profile_photo}
+            profilePhoto={user?.student_profile?.profile_photo_url ?? user?.student_profile?.profile_photo}
             role="student"
             size="md"
             showGenderBadge={true}

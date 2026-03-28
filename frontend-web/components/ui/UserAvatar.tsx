@@ -63,12 +63,15 @@ export default function UserAvatar({
   const initials = `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
   const storageUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '';
   const borderClass = getRoleBorderClass(role, gender);
+  const photoUrl = profilePhoto?.startsWith('http')
+    ? profilePhoto
+    : profilePhoto ? `${storageUrl}/storage/${profilePhoto}` : null;
 
   return (
     <div className={`relative inline-block ${className}`}>
-      {profilePhoto ? (
+      {photoUrl ? (
         <Image
-          src={`${storageUrl}/storage/${profilePhoto}`}
+          src={photoUrl}
           alt={`${firstName} ${lastName}`}
           width={sizePixels[size]}
           height={sizePixels[size]}

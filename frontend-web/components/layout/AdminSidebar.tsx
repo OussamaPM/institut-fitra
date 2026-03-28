@@ -295,7 +295,7 @@ export default function AdminSidebar() {
             firstName={user?.teacher_profile?.first_name || user?.first_name || ''}
             lastName={user?.teacher_profile?.last_name || user?.last_name || ''}
             gender={user?.teacher_profile?.gender}
-            profilePhoto={user?.teacher_profile?.profile_photo}
+            profilePhoto={user?.teacher_profile?.profile_photo_url ?? user?.teacher_profile?.profile_photo}
             role="admin"
             size="md"
             showGenderBadge={false}

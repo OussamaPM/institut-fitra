@@ -212,7 +212,7 @@ export default function UsersPage() {
                   const firstName = profile?.first_name || 'N/A';
                   const lastName = profile?.last_name || 'N/A';
                   const gender = user.student_profile?.gender || user.teacher_profile?.gender;
-                  const profilePhoto = user.student_profile?.profile_photo || user.teacher_profile?.profile_photo;
+                  const profilePhoto = user.student_profile?.profile_photo_url ?? user.student_profile?.profile_photo ?? user.teacher_profile?.profile_photo_url ?? user.teacher_profile?.profile_photo;
 
                   return (
                   <tr key={user.id} className="hover:bg-gray-50">

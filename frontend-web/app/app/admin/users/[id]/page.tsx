@@ -154,7 +154,7 @@ export default function UserDetailsPage() {
               firstName={profile?.first_name || ''}
               lastName={profile?.last_name || ''}
               gender={user.student_profile?.gender}
-              profilePhoto={user.student_profile?.profile_photo}
+              profilePhoto={user.student_profile?.profile_photo_url ?? user.student_profile?.profile_photo}
               size="lg"
               showGenderBadge={user.role === 'student'}
             />
