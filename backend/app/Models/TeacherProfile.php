@@ -44,7 +44,9 @@ class TeacherProfile extends Model
             return null;
         }
 
-        if (Storage::disk('spaces')->exists($this->profile_photo)) {
+        // New files are .webp on Spaces, legacy files are .jpg/.png on public disk
+        $extension = strtolower(pathinfo($this->profile_photo, PATHINFO_EXTENSION));
+        if ($extension === 'webp') {
             return Storage::disk('spaces')->url($this->profile_photo);
         }
 
