@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Mail\EnrollmentConfirmationMail;
+use App\Mail\NewAccountCredentialsMail;
 use App\Models\Enrollment;
 use App\Models\Notification;
 use App\Models\Order;
@@ -490,8 +491,13 @@ class StripeService
                     'gender' => $metadata->customer_gender ?? 'male',
                 ]);
 
-                // TODO: Envoyer un email avec les identifiants
-                Log::info("Nouveau compte créé pour {$order->customer_email} avec mot de passe temporaire");
+                // Envoyer les identifiants par email
+                try {
+                    Mail::to($student->email)->send(new NewAccountCredentialsMail($student, $temporaryPassword));
+                } catch (\Exception $e) {
+                    Log::error('New account credentials email error: '.$e->getMessage());
+                }
+                Log::info("Nouveau compte créé pour {$order->customer_email}");
             }
 
             // Mettre à jour la commande avec l'ID de l'élève
