@@ -7,10 +7,10 @@ export default function ComingSoon() {
     <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Motif décoratif en arrière-plan */}
       <div className="absolute inset-0 opacity-[0.03]">
-        <div className="absolute top-20 left-10 text-[200px] font-amiri text-primary select-none">
+        <div className="absolute top-20 left-10 text-[200px] font-arabic-calibri text-primary select-none">
           بِسْمِ اللَّهِ
         </div>
-        <div className="absolute bottom-20 right-10 text-[150px] font-amiri text-primary select-none">
+        <div className="absolute bottom-20 right-10 text-[150px] font-arabic-calibri text-primary select-none">
           الرَّحْمَنِ الرَّحِيمِ
         </div>
       </div>
@@ -43,7 +43,7 @@ export default function ComingSoon() {
 
         {/* Citation islamique */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 md:p-10 shadow-lg max-w-3xl mb-10 animate-fade-in-up animation-delay-400">
-          <div className="font-amiri text-2xl md:text-3xl text-primary text-center leading-loose" dir="rtl">
+          <div className="font-arabic-calibri text-2xl md:text-3xl text-primary text-center leading-loose" dir="rtl">
             <span>﴿ فَأَقِمۡ وَجۡهَكَ لِلدِّینِ حَنِیفاۚ فِطۡرَتَ ٱللَّهِ ٱلَّتِی فَطَرَ ٱلنَّاسَ عَلَیۡهَاۚ لَا تَبۡدِیلَ لِخَلۡقِ ٱللَّهِۚ ذَ ٰ⁠لِكَ ٱلدِّینُ ٱلۡقَیِّمُ وَلَـٰكِنَّ أَكۡثَرَ ٱلنَّاسِ لَا یَعۡلَمُونَ ﴾</span>
             <br />
             <span className="text-lg md:text-xl">[الروم ٣٠]</span>
@@ -76,6 +76,17 @@ export default function ComingSoon() {
 
       {/* Styles pour les animations */}
       <style jsx global>{`
+        @font-face {
+          font-family: 'SamirMaghribi';
+          src: url('/fonts/samir-khouaja-maghribi-bold.ttf') format('truetype');
+          font-weight: normal;
+          font-style: normal;
+        }
+
+        .font-arabic-calibri {
+          font-family: 'SamirMaghribi', 'Amiri', serif;
+        }
+
         @keyframes fade-in {
           from { opacity: 0; }
           to { opacity: 1; }
