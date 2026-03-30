@@ -44,7 +44,7 @@ export default function ComingSoon() {
         {/* Citation islamique */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 md:p-10 shadow-lg max-w-3xl mb-10 animate-fade-in-up animation-delay-400">
           <div className="font-arabic-calibri text-2xl md:text-3xl text-primary text-center leading-loose" dir="rtl">
-            <span>﴿ فَأَقِمۡ وَجۡهَكَ لِلدِّینِ حَنِیفاۚ فِطۡرَتَ ٱللَّهِ ٱلَّتِی فَطَرَ ٱلنَّاسَ عَلَیۡهَاۚ لَا تَبۡدِیلَ لِخَلۡقِ ٱللَّهِۚ ذَ ٰ⁠لِكَ ٱلدِّینُ ٱلۡقَیِّمُ وَلَـٰكِنَّ أَكۡثَرَ ٱلنَّاسِ لَا یَعۡلَمُونَ ﴾</span>
+            <span>﴿ فَأَقِمْ وَجْهَكَ لِلدِّينِ حَنِيفًا فِطْرَةَ اللَّهِ الَّتِي فَطَرَ النَّاسَ عَلَيْهَا لَا تَبْدِيلَ لِخَلْقِ اللَّهِ ذَلِكَ الدِّينُ الْقَيِّمُ وَلَكِنَّ أَكْثَرَ النَّاسِ لَا يَعْلَمُونَ ﴾</span>
             <br />
             <span className="text-lg md:text-xl">[الروم ٣٠]</span>
           </div>
