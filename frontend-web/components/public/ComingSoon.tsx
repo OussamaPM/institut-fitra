@@ -43,7 +43,7 @@ export default function ComingSoon() {
 
         {/* Citation islamique */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 md:p-10 shadow-lg max-w-3xl mb-10 animate-fade-in-up animation-delay-400">
-          <div className="font-amiri text-2xl md:text-3xl text-primary text-center leading-loose" dir="rtl">
+          <div className="font-arabic-calibri text-2xl md:text-3xl text-primary text-center leading-loose" dir="rtl">
             <span>﴿ فَأَقِمۡ وَجۡهَكَ لِلدِّینِ حَنِیفاۚ فِطۡرَتَ ٱللَّهِ ٱلَّتِی فَطَرَ ٱلنَّاسَ عَلَیۡهَاۚ لَا تَبۡدِیلَ لِخَلۡقِ ٱللَّهِۚ ذَ ٰ⁠لِكَ ٱلدِّینُ ٱلۡقَیِّمُ وَلَـٰكِنَّ أَكۡثَرَ ٱلنَّاسِ لَا یَعۡلَمُونَ ﴾</span>
             <br />
             <span className="text-lg md:text-xl">[الروم ٣٠]</span>
@@ -81,6 +81,7 @@ export default function ComingSoon() {
           src: url('/fonts/samir-khouaja-maghribi-bold.ttf') format('truetype');
           font-weight: normal;
           font-style: normal;
+          unicode-range: U+0600-U+065F, U+0660-U+06D3, U+FB50-U+FDFF, U+FE70-U+FEFF;
         }
 
         .font-arabic-calibri {
