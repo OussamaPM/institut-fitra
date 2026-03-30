@@ -19,11 +19,7 @@ export default function HeroSection() {
       <div className="max-w-7xl mx-auto px-6 py-10 lg:py-12 grid lg:grid-cols-2 gap-8 lg:gap-12 items-center relative z-10">
         {/* Contenu textuel */}
         <div className="order-2 lg:order-1">
-          <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-bold mb-6">
-            <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse"></span>
-            <span>Institut Fitra</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-playfair font-bold text-secondary leading-tight mb-6">
+<h1 className="text-4xl sm:text-5xl lg:text-7xl font-playfair font-bold text-secondary leading-tight mb-6">
             Un Cursus <br /> <span className="text-primary">Complet & Progressif</span>
           </h1>
           <p className="text-base sm:text-lg text-gray-600 mb-8 lg:mb-10 leading-relaxed max-w-lg">

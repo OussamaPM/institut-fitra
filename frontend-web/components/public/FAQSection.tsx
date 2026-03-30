@@ -38,7 +38,7 @@ export default function FAQSection() {
   };
 
   return (
-    <section id="faq" className="py-12 sm:py-16 md:py-24 bg-white scroll-mt-20">
+    <section id="faq" className="py-12 sm:py-16 md:py-24 bg-background scroll-mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-8 sm:mb-12 md:mb-16">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-playfair font-bold text-secondary mb-3 sm:mb-4">Questions Fréquentes</h2>
@@ -49,7 +49,7 @@ export default function FAQSection() {
           {faqs.map((faq, index) => (
             <div
               key={index}
-              className="bg-background rounded-xl sm:rounded-2xl border border-gray-100 overflow-hidden"
+              className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 overflow-hidden"
             >
               <button
                 onClick={() => toggleFAQ(index)}

@@ -2,19 +2,27 @@
 
 export default function StudyPathSection() {
   return (
-    <section className="py-12 sm:py-16 md:py-24">
+    <section className="pt-12 sm:pt-14 pb-12 sm:pb-16 md:pb-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-      <div className="text-center mb-16">
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-playfair font-bold text-secondary mb-4">Le Parcours d'Études</h2>
-        <p className="text-gray-500 max-w-xl mx-auto">
-          Un cursus structuré en trois étapes progressives, pour bâtir une connaissance solide et durable.
-        </p>
+      <div className="mb-16">
+        <span className="text-primary font-bold tracking-widest uppercase text-xs sm:text-sm">Un cursus en trois étapes</span>
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-playfair font-bold text-secondary mt-1 sm:mt-2">Le Parcours d'Études</h2>
+      </div>
+
+      {/* Badge centré */}
+      <div className="flex justify-center mb-10">
+        <div
+          className="inline-flex items-center px-6 py-2 rounded-full border text-xs font-semibold uppercase tracking-widest shadow-sm"
+          style={{ borderColor: '#7B5A4B', color: '#7B5A4B', backgroundColor: '#ffffff' }}
+        >
+          Un cursus structuré en trois étapes progressives, pour bâtir une connaissance solide et durable
+        </div>
       </div>
 
       <div className="relative pl-12 md:pl-20">
         {/* Ligne de progression */}
         <div
-          className="absolute top-0 bottom-0 w-0.5"
+          className="absolute top-5 bottom-0 w-0.5"
           style={{
             left: '20px',
             background: 'linear-gradient(to bottom, #7B5A4B, #d1d5db)',

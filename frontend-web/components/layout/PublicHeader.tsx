@@ -21,8 +21,8 @@ export default function PublicHeader() {
 
   const navLinks = [
     { href: '/', label: 'Accueil' },
-    { href: '/about', label: 'À propos' },
-    { href: '/programs', label: 'Programmes' },
+    { href: '/cursus', label: 'Cursus' },
+    { href: '/seminaire', label: 'Séminaire' },
     { href: '/contact', label: 'Contact' },
   ];
 
