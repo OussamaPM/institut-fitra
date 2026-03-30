@@ -86,8 +86,8 @@ export default function ComingSoon() {
 
         .font-arabic-calibri {
           font-family: 'SamirMaghribi', 'Amiri', serif;
-          letter-spacing: -0.05em;
-          word-spacing: -0.1em;
+          letter-spacing: -0.12em;
+          word-spacing: -0.2em;
         }
 
         @keyframes fade-in {
