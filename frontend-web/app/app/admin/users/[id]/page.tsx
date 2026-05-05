@@ -291,6 +291,26 @@ export default function UserDetailsPage() {
             </Card>
           )}
 
+          {/* Formulaire ancien élève */}
+          {user.role === 'student' && user.student_profile?.legacy_form_data && user.student_profile.legacy_form_data.length > 0 && (
+            <Card>
+              <div className="p-6">
+                <h2 className="font-playfair text-xl font-semibold text-secondary mb-4">
+                  Formulaire ancien élève
+                </h2>
+
+                <div className="space-y-4">
+                  {user.student_profile.legacy_form_data.map((entry, index) => (
+                    <div key={index}>
+                      <p className="font-semibold text-secondary text-sm mb-1">{entry.question}</p>
+                      <p className="text-gray-700 text-sm whitespace-pre-wrap">{entry.answer || '—'}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          )}
+
           {/* Informations spécifiques Teacher/Admin */}
           {(user.role === 'teacher' || user.role === 'admin') && user.teacher_profile && (
             <Card>

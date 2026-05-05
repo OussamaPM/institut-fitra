@@ -25,10 +25,12 @@ class StudentProfile extends Model
         'city',
         'country',
         'emergency_contact',
+        'legacy_form_data',
     ];
 
     protected $casts = [
         'date_of_birth' => 'date',
+        'legacy_form_data' => 'array',
     ];
 
     protected $appends = ['profile_photo_url'];

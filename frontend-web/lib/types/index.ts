@@ -14,6 +14,11 @@ export interface User {
   teacher_profile?: TeacherProfile;
 }
 
+export interface LegacyFormEntry {
+  question: string;
+  answer: string;
+}
+
 export interface StudentProfile {
   id: number;
   user_id: number;
@@ -27,6 +32,7 @@ export interface StudentProfile {
   city?: string;
   country?: string;
   emergency_contact?: string;
+  legacy_form_data?: LegacyFormEntry[];
 }
 
 export interface TeacherProfile {
