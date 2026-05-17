@@ -8,14 +8,15 @@ Visiteurs → Site Vitrine (Next.js)  ─┐
 Admin    → Web App (Next.js)        ─┘
 ```
 
-- **Backend** : Laravel 12, PHP 8.4, MySQL, Sanctum — port 8000 (local) / `api.institut-fitra.com` (prod)
-- **Frontend** : Next.js 14 (App Router), TypeScript, Tailwind CSS — port 3000 (local) / Vercel (prod)
+- **Backend** : Laravel 12, PHP 8.4, MySQL, Sanctum — port **8001** (local) / `api.institut-fitra.com` (prod)
+- **Frontend** : Next.js 14 (App Router), TypeScript, Tailwind CSS — port **3020** (local) / Vercel (prod)
+- **Document Editor** : Next.js 14 — port **3021** (local)
 - **Stockage** : DigitalOcean Spaces (fichiers + CDN) — bucket `institut-fitra-media`, région `fra1`
 - **Vidéos** : Bunny Stream — l'admin colle l'URL embed ou le code HTML complet, le `src` est extrait automatiquement
 - **Paiements** : Stripe Checkout (unique, multi-versements, régularisation)
 - **Emails** : Resend — domaine `institut-fitra.com`, envoi depuis `noreply@institut-fitra.com`
 - **Sous-domaines prod** : `institut-fitra.com` → vitrine | `app.institut-fitra.com` → backoffice | `api.institut-fitra.com` → API Laravel
-- **Sous-domaines local** : `localhost:3000` → vitrine | `app.localhost:3000` → backoffice
+- **Sous-domaines local** : `localhost:3020` → vitrine | `app.localhost:3020` → backoffice
 
 ---
 
@@ -32,7 +33,7 @@ institut-fitra/
 └── frontend-web/
     ├── app/(public)/          # Site vitrine (accueil, à propos, programmes, contact)
     ├── app/app/auth/          # Login, mot de passe oublié, reset
-    ├── app/app/admin/         # Dashboard, users, programs, classes, sessions, orders, messages, tracking
+    ├── app/app/admin/         # Dashboard, users, programs, classes, sessions, orders, messages, tracking, contact-messages
     ├── app/app/student/       # Dashboard, planning, supports, replays, messages, profil
     ├── components/layout/     # AdminSidebar, StudentSidebar
     ├── components/ui/         # UserAvatar (gère URLs Spaces + legacy)
@@ -286,14 +287,17 @@ Message    { id, sender_id, receiver_id?, group_id?, content, attachment_path?, 
 
 ```bash
 # Backend
-cd backend && php artisan serve          # Port 8000
+cd backend && php artisan serve --port=8001   # Port 8001
 php artisan migrate && php artisan db:seed
-php artisan test                          # 104 tests
-./vendor/bin/pint                         # Formatage
+php artisan test                               # 104 tests
+./vendor/bin/pint                              # Formatage
 
-# Frontend
-cd frontend-web && npm run dev            # Port 3000
+# Frontend (vitrine + backoffice)
+cd frontend-web && npm run dev                 # Port 3020
 npm run build
+
+# Éditeur de documents
+cd document-editor && npm run dev              # Port 3021
 ```
 
 ---
@@ -332,25 +336,47 @@ npm run build
 
 ---
 
-## 11. État du Projet (28/03/2026)
+## 11. État du Projet (17/05/2026)
 
 ### ✅ Complété
 - Auth (login, register, forgot/reset password)
 - BDD complète + modèles Laravel + relations
 - Gestion programmes, niveaux multi-classes, classes (hiérarchie parent/enfant)
 - Génération automatique de sessions
-- Espace Admin : dashboard, users, programmes, classes, sessions, commandes, messages, tracking
+- Espace Admin : dashboard, users, programmes, classes, sessions, commandes, messages, tracking, contact-messages
 - Espace Élève : dashboard, planning, supports, replays, messagerie, profil éditable
 - Messagerie interne (directs + groupes + pièces jointes)
 - Stripe Checkout (paiement unique, multi-versements, régularisation échecs)
 - Formulaires de suivi (tracking forms)
-- Site vitrine (accueil, à propos, programmes, contact)
 - Emails transactionnels : confirmation inscription, identifiants nouveau compte, reset password
 - Déploiement production (DigitalOcean + Ploi + Vercel), DNS + SSL tous verts
 - Auto-deploy GitHub → Ploi + Vercel
 - Stockage DigitalOcean Spaces (photos, supports, pièces jointes) + conversion WebP automatique
 - Replays Bunny Stream : l'admin colle l'URL ou le code embed complet
 - Commandes manuelles : `class_id` sélectionnable directement sans `default_class_id`
+- **Refonte site vitrine** (30/03/2026) :
+  - Nouveau menu : Accueil / Cursus / Séminaire / Contact (suppression `/about`)
+  - `/about` redirige vers `/`
+  - Page `/cursus` : StudyPathSection + ProgramYearSection + FAQSection + bouton inscription
+  - Page `/seminaire` : entièrement statique (pourquoi, thématiques, prochain séminaire, placeholders)
+  - Page accueil restructurée : Hero → Mission → Valeurs → Piliers (+ bouton Explorer) → Équipe → Teaser Séminaire
+  - Bouton "Explorer en détail le cursus" intégré dans PillarsSection (marron, icônes animées)
+  - Bouton "Je m'inscris au cursus" intégré dans ProgramYearSection
+- **Refonte contenu vitrine** (17/05/2026) :
+  - Menu : onglet "Séminaire" masqué (page conservée, non accessible via nav)
+  - Page accueil : nouveaux textes hero, mission, valeurs, piliers, direction Cheikh Abdelbasset, teaser séminaire
+  - Page cursus : matières tronc commun refaites (Quran, Hadith & Sīra, Fiqh, Tazkiyah, Fikr avec descriptions détaillées)
+  - Étape 2 renommée "Les Clés des Sciences : Vision Globale" (2 ans, texte descriptif)
+  - Étape 3 "Programme de Spécialisation" simplifiée (style sobre, "À venir")
+  - Section "Programme de la 1ère Année" (`ProgramYearSection`) retirée de la page cursus (composant conservé)
+  - FAQ : 3 réponses mises à jour, question "suivi personnalisé" supprimée
+  - Page contact : Telegram remplace téléphone, adresse et horaires supprimés, Instagram seul dans "Suivez-nous"
+- **Page admin messages de contact** (17/05/2026) :
+  - Route : `/admin/contact-messages`
+  - Liste + détail côte à côte, filtres statut/recherche
+  - Marquage lu automatique, changement de statut (nouveau/en cours/résolu), suppression, bouton répondre par email
+  - Lien ajouté dans `AdminSidebar` (groupe principal, avant Messagerie)
+  - Les messages sont stockés en BDD (`contact_messages`), aucun email de notification n'est envoyé
 
 ### ⏳ À finaliser (prod)
 - **Stripe live keys** : mettre `stripe_secret_key` + `stripe_webhook_secret` dans table `settings`, configurer webhook `https://api.institut-fitra.com/api/stripe/webhook`
