@@ -2,21 +2,21 @@ import StudyPathSection from '@/components/public/StudyPathSection';
 import FAQSection from '@/components/public/FAQSection';
 import Link from 'next/link';
 
-async function getFirstProgramId(): Promise<number | null> {
+async function getSoleProgramId(): Promise<number | null> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api';
     const res = await fetch(`${apiUrl}/programs`, { next: { revalidate: 300 } });
     if (!res.ok) return null;
     const data = await res.json();
     const programs = Array.isArray(data) ? data : data.data || [];
-    return programs[0]?.id ?? null;
+    return programs.length === 1 ? programs[0].id : null;
   } catch {
     return null;
   }
 }
 
 export default async function CursusPage() {
-  const programId = await getFirstProgramId();
+  const programId = await getSoleProgramId();
   const inscriptionHref = programId ? `/programs/${programId}` : '/programs';
 
   return (
