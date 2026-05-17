@@ -486,8 +486,102 @@ export interface SubmitFormResponseData {
   }[];
 }
 
+// Quiz types
+export type QuizQuestionType = 'multiple_choice' | 'free_text';
+
+export interface QuizOption {
+  id: number;
+  question_id: number;
+  option_text: string;
+  is_correct?: boolean; // exposé uniquement en contexte admin/révision
+  order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface QuizQuestion {
+  id: number;
+  quiz_id: number;
+  question_text: string;
+  type: QuizQuestionType;
+  options?: QuizOption[];
+  order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Quiz {
+  id: number;
+  session_id: number;
+  class_id: number;
+  title: string;
+  description?: string;
+  created_by: number;
+  session?: Session;
+  class?: ClassModel;
+  creator?: User;
+  questions?: QuizQuestion[];
+  submissions_count?: number;
+  // Champs calculés côté élève
+  submitted?: boolean;
+  submitted_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuizAnswer {
+  id: number;
+  submission_id: number;
+  question_id: number;
+  selected_option_id?: number;
+  free_text_answer?: string;
+  is_correct?: boolean | null;
+  question?: QuizQuestion;
+  selected_option?: QuizOption;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface QuizSubmission {
+  id: number;
+  quiz_id: number;
+  student_id: number;
+  submitted_at: string;
+  student?: User;
+  answers?: QuizAnswer[];
+  score?: QuizScore;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface QuizScore {
+  correct: number;
+  incorrect: number;
+  total: number;
+}
+
+export interface CreateQuizData {
+  session_id: number;
+  class_id: number;
+  title: string;
+  description?: string;
+  questions: {
+    question_text: string;
+    type: QuizQuestionType;
+    options?: { option_text: string; is_correct: boolean }[];
+  }[];
+}
+
+export interface SubmitQuizData {
+  answers: {
+    question_id: number;
+    selected_option_id?: number;
+    free_text_answer?: string;
+  }[];
+}
+
 // Notification types
-export type NotificationType = 'session' | 'message' | 'enrollment' | 'material' | 'payment' | 'level' | 'other';
+export type NotificationType = 'session' | 'message' | 'enrollment' | 'material' | 'payment' | 'level' | 'tracking' | 'quiz' | 'other';
 export type NotificationCategory =
   | 'payment_success'
   | 'payment_failed'

@@ -1,0 +1,10 @@
+export { default as SectionTitle } from './SectionTitle';
+export { default as Subtitle } from './Subtitle';
+export { default as Paragraph } from './Paragraph';
+export { default as ArabicVerse } from './ArabicVerse';
+export { default as VerseBox } from './VerseBox';
+export { default as BulletList } from './BulletList';
+export { default as NumberedList } from './NumberedList';
+export { default as Quote } from './Quote';
+export { default as PageHeader } from './PageHeader';
+export { default as CoverPage } from './CoverPage';

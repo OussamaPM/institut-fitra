@@ -18,6 +18,8 @@ return [
         'https://www.institut-fitra.com',
         'http://localhost:3000',
         'http://app.localhost:3000',
+        'http://localhost:3020',
+        'http://app.localhost:3020',
     ],
 
     'allowed_origins_patterns' => [],

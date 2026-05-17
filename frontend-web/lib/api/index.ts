@@ -9,6 +9,7 @@ export { default as studentProfileApi } from './studentProfile';
 export { default as ordersApi } from './orders';
 export { default as checkoutApi } from './checkout';
 export { default as trackingFormsApi, studentTrackingApi } from './tracking-forms';
+export { default as quizzesApi } from './quizzes';
 export { default as settingsApi } from './settings';
 export { default as failedPaymentsApi } from './failed-payments';
 export { default as apiClient } from './client';

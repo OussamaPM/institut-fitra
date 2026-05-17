@@ -221,19 +221,6 @@ export default function ProgramDetailPage() {
   return (
     <div className="py-6 sm:py-8 md:py-12 bg-background min-h-screen">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Breadcrumb */}
-        <nav className="mb-4 sm:mb-6 md:mb-8 flex items-center space-x-2 text-xs sm:text-sm text-gray-600 overflow-x-auto whitespace-nowrap pb-2">
-          <Link href="/" className="hover:text-primary flex-shrink-0">
-            Accueil
-          </Link>
-          <span className="flex-shrink-0">/</span>
-          <Link href="/programs" className="hover:text-primary flex-shrink-0">
-            Programmes
-          </Link>
-          <span className="flex-shrink-0">/</span>
-          <span className="text-secondary truncate">{program.name}</span>
-        </nav>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Colonne principale - Détails du programme */}
           <div className="lg:col-span-2 space-y-6 lg:space-y-8">
@@ -777,28 +764,6 @@ export default function ProgramDetailPage() {
           </div>
         </div>
 
-        {/* Retour à la liste */}
-        <div className="text-center mt-6 sm:mt-8">
-          <Link
-            href="/programs"
-            className="inline-flex items-center text-primary hover:text-primary/80 transition-colors text-sm sm:text-base"
-          >
-            <svg
-              className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            Retour aux programmes
-          </Link>
-        </div>
       </div>
     </div>
   );

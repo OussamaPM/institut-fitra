@@ -13,6 +13,8 @@ const typeLabels: Record<NotificationType, string> = {
   material: 'Support',
   payment: 'Paiement',
   level: 'Niveau',
+  tracking: 'Suivi',
+  quiz: 'Quiz',
   other: 'Autre',
 };
 
@@ -23,6 +25,8 @@ const typeColors: Record<NotificationType, string> = {
   material: 'bg-yellow-100 text-yellow-800',
   payment: 'bg-primary/10 text-primary',
   level: 'bg-teal-100 text-teal-800',
+  tracking: 'bg-indigo-100 text-indigo-800',
+  quiz: 'bg-orange-100 text-orange-800',
   other: 'bg-gray-100 text-gray-800',
 };
 

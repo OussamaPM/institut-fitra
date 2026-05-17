@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { SessionMaterial, Enrollment } from '@/lib/types';
+import { SessionMaterial, Enrollment, Quiz } from '@/lib/types';
 import materialsApi from '@/lib/api/materials';
 import { enrollmentsApi } from '@/lib/api';
+import quizzesApi from '@/lib/api/quizzes';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
@@ -17,12 +18,15 @@ import {
   Filter,
   Play,
   X,
+  HelpCircle,
 } from 'lucide-react';
 import { Session } from '@/lib/types';
+import Link from 'next/link';
 
 export default function StudentSupportsPage() {
   const [materials, setMaterials] = useState<SessionMaterial[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [quizzesBySession, setQuizzesBySession] = useState<Record<number, Quiz>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClassId, setFilterClassId] = useState<number | 'all'>('all');
@@ -35,12 +39,17 @@ export default function StudentSupportsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [materialsData, enrollmentsData] = await Promise.all([
+      const [materialsData, enrollmentsData, quizzesData] = await Promise.all([
         materialsApi.getStudentMaterials(),
         enrollmentsApi.getMyEnrollments(),
+        quizzesApi.getStudentQuizzes(),
       ]);
       setMaterials(materialsData);
       setEnrollments(enrollmentsData.filter(e => e.status === 'active'));
+      // Indexer les quiz par session_id pour un accès rapide
+      const bySession: Record<number, Quiz> = {};
+      quizzesData.forEach((q) => { bySession[q.session_id] = q; });
+      setQuizzesBySession(bySession);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -197,6 +206,9 @@ export default function StudentSupportsPage() {
                     Replay
                   </th>
                   <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                    Quiz
+                  </th>
+                  <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
                     Session
                   </th>
                   <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
@@ -239,6 +251,29 @@ export default function StudentSupportsPage() {
                             <Play size={12} className="text-red-500" />
                             Expire
                           </span>
+                        )
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {material.session && quizzesBySession[material.session.id] ? (
+                        quizzesBySession[material.session.id].submitted ? (
+                          <Link
+                            href={`/app/student/quiz/${quizzesBySession[material.session.id].id}/review`}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                          >
+                            <HelpCircle size={12} className="text-green-600" />
+                            Complété
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/app/student/quiz/${quizzesBySession[material.session.id].id}`}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 hover:bg-orange-200 transition-colors"
+                          >
+                            <HelpCircle size={12} className="text-orange-600" />
+                            À faire
+                          </Link>
                         )
                       ) : (
                         <span className="text-sm text-gray-400">-</span>
@@ -330,7 +365,7 @@ export default function StudentSupportsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <a
                     href={materialsApi.getFileUrl(material.file_path)}
                     target="_blank"
@@ -354,6 +389,25 @@ export default function StudentSupportsPage() {
                       <Play size={16} />
                       Expire
                     </span>
+                  )}
+                  {material.session && quizzesBySession[material.session.id] && (
+                    quizzesBySession[material.session.id].submitted ? (
+                      <Link
+                        href={`/app/student/quiz/${quizzesBySession[material.session.id].id}/review`}
+                        className="inline-flex items-center justify-center gap-2 px-3 py-2.5 bg-green-100 text-green-700 text-sm rounded-lg hover:bg-green-200 transition-colors min-h-[44px]"
+                      >
+                        <HelpCircle size={16} />
+                        Quiz ✓
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/app/student/quiz/${quizzesBySession[material.session.id].id}`}
+                        className="inline-flex items-center justify-center gap-2 px-3 py-2.5 bg-orange-100 text-orange-700 text-sm rounded-lg hover:bg-orange-200 transition-colors min-h-[44px]"
+                      >
+                        <HelpCircle size={16} />
+                        Quiz
+                      </Link>
+                    )
                   )}
                 </div>
               </div>

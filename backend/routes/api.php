@@ -25,6 +25,8 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\StudentProfileController;
 use App\Http\Controllers\StudentReinscriptionController;
 use App\Http\Controllers\StudentTrackingController;
+use App\Http\Controllers\QuizController;
+use App\Http\Controllers\StudentQuizController;
 use App\Http\Controllers\TrackingFormController;
 use Illuminate\Support\Facades\Route;
 
@@ -61,6 +63,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::put('/student/profile', [StudentProfileController::class, 'update']);
         Route::post('/student/profile/photo', [StudentProfileController::class, 'updatePhoto']);
         Route::delete('/student/profile/photo', [StudentProfileController::class, 'removePhoto']);
+
+        // Student quizzes
+        Route::get('/student/quizzes', [StudentQuizController::class, 'index']);
+        Route::get('/student/quizzes/{quiz}', [StudentQuizController::class, 'show']);
+        Route::post('/student/quizzes/{quiz}/submit', [StudentQuizController::class, 'submit']);
+        Route::get('/student/quizzes/{quiz}/review', [StudentQuizController::class, 'review']);
 
         // Student tracking forms (Mon suivi)
         Route::get('/student/tracking', [StudentTrackingController::class, 'index']);
@@ -218,6 +226,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
         // Student tracking history (for admin - student profile)
         Route::get('/admin/students/{student}/tracking', [StudentTrackingController::class, 'studentTracking']);
+
+        // Quiz management (admin)
+        Route::get('/admin/quizzes', [QuizController::class, 'index']);
+        Route::post('/admin/quizzes', [QuizController::class, 'store']);
+        Route::put('/admin/quizzes/{quiz}', [QuizController::class, 'update']);
+        Route::delete('/admin/quizzes/{quiz}', [QuizController::class, 'destroy']);
+        Route::get('/admin/quizzes/{quiz}/results', [QuizController::class, 'results']);
 
         // Student levels history (for admin - student profile)
         Route::get('/admin/students/{student}/levels-history', [StudentReinscriptionController::class, 'studentHistory']);

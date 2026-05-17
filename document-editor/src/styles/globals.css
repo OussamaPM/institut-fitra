@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Scheherazade+New:wght@400;500;600;700&display=swap');
+
+:root {
+  --color-primary: #1e5a8a;
+  --color-secondary: #2b7cb5;
+  --color-cream: #f5f0e6;
+  --color-light-blue: #e8f4fc;
+}
+
+/* Page A4 pour la prévisualisation */
+.page-a4 {
+  width: 210mm;
+  min-height: 297mm;
+  background-color: var(--color-cream);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Texte arabe avec tashkil */
+.arabic-text {
+  font-family: 'Scheherazade New', 'Amiri', serif;
+  direction: rtl;
+  text-align: right;
+  line-height: 2.2;
+}
+
+/* Encadré pour versets */
+.verse-box {
+  background-color: var(--color-light-blue);
+  border: 1px solid var(--color-secondary);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+/* Bandeau titre */
+.title-banner {
+  background-color: var(--color-primary);
+  color: white;
+  padding: 0.75rem 2rem;
+  font-family: 'Playfair Display', serif;
+  font-weight: 600;
+}
+
+/* Sous-titre style */
+.subtitle-style {
+  color: var(--color-primary);
+  font-family: 'Playfair Display', serif;
+  font-weight: 600;
+}
+
+/* Numéro de page circulaire */
+.page-number {
+  width: 32px;
+  height: 32px;
+  background-color: var(--color-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* En-tête avec titre arabe */
+.header-arabic {
+  font-family: 'Scheherazade New', serif;
+  color: var(--color-primary);
+  font-size: 1.5rem;
+}
+
+/* Citations/références coraniques */
+.quran-reference {
+  color: var(--color-primary);
+  font-style: italic;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+/* Lanterne decorative */
+.lantern-decoration {
+  position: absolute;
+  width: 40px;
+  height: auto;
+}
+
+/* Style bullet point personnalisé */
+.custom-bullet::before {
+  content: '○';
+  color: var(--color-primary);
+  margin-right: 0.5rem;
+}
+
+/* Flèche indicatrice */
+.arrow-indicator {
+  color: var(--color-secondary);
+  font-weight: bold;
+}
+
+/* Print styles */
+@media print {
+  .page-a4 {
+    box-shadow: none;
+    margin: 0;
+    page-break-after: always;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* Editor specific styles */
+.editor-block {
+  transition: all 0.2s ease;
+  cursor: grab;
+}
+
+.editor-block:hover {
+  outline: 2px dashed var(--color-secondary);
+  outline-offset: 4px;
+}
+
+.editor-block.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.drop-indicator {
+  height: 4px;
+  background-color: var(--color-primary);
+  border-radius: 2px;
+  margin: 4px 0;
+}

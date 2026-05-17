@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 120" fill="currentColor">
+  <!-- Top hook -->
+  <path d="M28 0 L32 0 L32 8 L28 8 Z" opacity="0.8"/>
+  <circle cx="30" cy="12" r="4" opacity="0.8"/>
+
+  <!-- Top cap -->
+  <path d="M20 16 L40 16 L42 24 L18 24 Z" opacity="0.9"/>
+
+  <!-- Main lantern body -->
+  <path d="M16 24 C16 24 12 40 12 60 C12 80 16 96 16 96 L44 96 C44 96 48 80 48 60 C48 40 44 24 44 24 Z" opacity="0.7"/>
+
+  <!-- Decorative bands -->
+  <rect x="14" y="36" width="32" height="3" opacity="0.5"/>
+  <rect x="14" y="56" width="32" height="3" opacity="0.5"/>
+  <rect x="14" y="76" width="32" height="3" opacity="0.5"/>
+
+  <!-- Inner glow effect -->
+  <ellipse cx="30" cy="60" rx="12" ry="20" opacity="0.3"/>
+
+  <!-- Bottom cap -->
+  <path d="M18 96 L42 96 L40 104 L20 104 Z" opacity="0.9"/>
+
+  <!-- Bottom finial -->
+  <path d="M26 104 L34 104 L32 116 L28 116 Z" opacity="0.8"/>
+  <circle cx="30" cy="118" r="2" opacity="0.8"/>
+</svg>

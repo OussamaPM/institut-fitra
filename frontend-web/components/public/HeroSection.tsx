@@ -32,12 +32,6 @@ export default function HeroSection() {
             >
               Explorer le cursus
             </Link>
-            <Link
-              href="#programme"
-              className="px-6 sm:px-8 py-3 sm:py-4 bg-white text-secondary border border-gray-200 rounded-xl text-center font-bold text-base sm:text-lg hover:bg-gray-50 transition-all"
-            >
-              Voir la 1ère année
-            </Link>
           </div>
         </div>
 
