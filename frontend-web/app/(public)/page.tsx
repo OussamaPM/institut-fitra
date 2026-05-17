@@ -59,19 +59,13 @@ export default async function HomePage() {
             <div>
               <div className="space-y-4 text-gray-600 text-sm sm:text-base leading-relaxed">
                 <p>
-                  L'Institut Fitra est une plateforme d'apprentissage en ligne qui offre des cours
-                  de qualité en langue arabe et sciences islamiques, accessibles à tous, partout
-                  dans le monde.
+                  L'Institut FITRA est un institut d'apprentissage en ligne spécialisé dans l'enseignement des sciences islamiques, pensé pour rendre le savoir accessible à chacun, sans limite de lieu ni de parcours.
                 </p>
                 <p>
-                  Notre mission est de rendre l'apprentissage de la langue arabe et des sciences
-                  islamiques accessible, efficace et enrichissant pour chaque étudiant, quel que
-                  soit son niveau ou sa localisation.
+                  À travers une approche fondée sur la transmission authentique, la pédagogie et la bienveillance, notre mission est d'accompagner chaque étudiant dans un apprentissage profond, progressif et bénéfique.
                 </p>
                 <p>
-                  Nous croyons fermement que l'éducation est la clé du développement personnel et
-                  spirituel, et nous nous engageons à fournir un enseignement authentique basé sur
-                  les sources traditionnelles.
+                  Nous croyons que la véritable éducation ne se limite pas à l'acquisition de connaissances, mais qu'elle participe à l'élévation de l'être, au développement de la conscience et au retour vers une compréhension plus juste et plus sincère de sa foi.
                 </p>
               </div>
             </div>
@@ -84,16 +78,16 @@ export default async function HomePage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                         d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     ),
-                    titre: 'Qualité Garantie',
-                    desc: 'Enseignants diplômés des meilleures universités islamiques',
+                    titre: "Qualité d'enseignement",
+                    desc: 'Des cours dispensés par des enseignants diplômés et qualifiés',
                   },
                   {
                     icon: (
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     ),
-                    titre: 'Flexibilité',
-                    desc: "Cours en ligne accessibles depuis n'importe où",
+                    titre: 'Accessibilité',
+                    desc: "Un apprentissage en ligne accessible partout, à votre rythme",
                   },
                   {
                     icon: (
@@ -101,7 +95,7 @@ export default async function HomePage() {
                         d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     ),
                     titre: 'Communauté',
-                    desc: "Rejoignez une communauté d'apprenants motivés",
+                    desc: "Une communauté bienveillante d'étudiants engagés dans la quête du savoir",
                   },
                 ].map((item) => (
                   <div key={item.titre} className="flex items-start space-x-4">
@@ -143,8 +137,8 @@ export default async function HomePage() {
               },
               {
                 icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />,
-                titre: 'Excellence',
-                desc: 'Des standards élevés d\'enseignement pour une formation de qualité optimale',
+                titre: 'Qualité',
+                desc: 'Un enseignement structuré et soigné pour un apprentissage de qualité',
               },
             ].map((valeur) => (
               <div key={valeur.titre} className="bg-white rounded-xl shadow-md p-5 sm:p-6 text-center">
@@ -177,23 +171,23 @@ export default async function HomePage() {
           {/* Direction */}
           <div className="bg-white rounded-xl shadow-md p-6 sm:p-8 mb-8 border-l-4 border-primary">
             <h3 className="font-playfair text-xl sm:text-2xl font-semibold text-secondary mb-4">
-              Direction et Enseignement
+              Direction et enseignement
             </h3>
             <p className="text-gray-600 text-sm sm:text-base mb-6 leading-relaxed">
-              Le cursus est placé sous la direction de <strong className="text-secondary">Cheikh Abdelbasset</strong>,
-              dont le parcours académique et spirituel allie tradition et rigueur universitaire :
+              Le cursus est supervisé par <strong className="text-secondary">Cheikh Abdelbasset</strong>,
+              dont le parcours s'inscrit dans une tradition de transmission authentique et de rigueur
             </p>
             <div className="space-y-5">
               {[
                 {
                   icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />,
                   titre: 'Parcours',
-                  desc: "Doctorant en Fondements du Fiqh, titulaire d'un Master en pensée islamique et d'une Licence Oussoul Eddine (Études du Coran et du Hadith).",
+                  desc: "Maîtrisant le Quran, les sciences islamiques et la langue arabe, il est titulaire d'une Licence en Oussoul Eddine (études du Quran et du Hadith) ainsi que d'un Master en pensée islamique. Il a également étudié auprès de savants et de professeurs universitaires reconnus.",
                 },
                 {
                   icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />,
                   titre: 'Transmission',
-                  desc: "Maîtrise du Coran (Warsh) et formé aux sciences de la langue arabe. Il a étudié et continue d'étudier auprès de grands savants (principalement au Maroc), dont il a reçu des Ijazat (autorisations de transmettre) pour de nombreux ouvrages de référence.",
+                  desc: "Détiens des Ijazats (autorisations de transmettre) de nombreux ouvrages de référence.",
                 },
                 {
                   icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />,
@@ -263,9 +257,7 @@ export default async function HomePage() {
           </h2>
           <div className="w-16 sm:w-20 h-0.5 sm:h-1 bg-primary mx-auto rounded-full mb-8"></div>
           <p className="text-gray-600 text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed mb-8">
-            Des immersions de plusieurs jours pour approfondir un domaine des sciences islamiques
-            en compagnie de savants et d'une communauté d'apprenants motivés. Accessible en ligne,
-            depuis n'importe où dans le monde.
+            Des séminaires explorant une grande diversité de thèmes, abordant aussi bien les sciences islamiques que les questions contemporaines.
           </p>
           <Link
             href="/seminaire"

@@ -6,7 +6,7 @@ const pillars = [
   {
     icon: '📖',
     title: 'Quran',
-    description: 'Tafsir et méditation profonde des textes.',
+    description: 'Compréhension et méditation',
   },
   {
     icon: '📜',

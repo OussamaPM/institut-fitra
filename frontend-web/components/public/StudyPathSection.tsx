@@ -54,21 +54,21 @@ export default function StudyPathSection() {
                 {
                   icon: (
                     <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path d="M12 14l9-5-9-5-9 5 9 5z" />
-                      <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                      <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   ),
-                  title: 'Sira (Vie du Prophète ﷺ)',
-                  desc: "Étudier le modèle par excellence pour s'en inspirer.",
+                  title: 'Quran',
+                  desc: "Loin de la précipitation : un parcours sur 4 années dédié à l'étude et à la méditation des deux derniers hizb du Quran (de sourate An-Naba à sourate An-Nass).",
                 },
                 {
                   icon: (
                     <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      <path d="M12 14l9-5-9-5-9 5 9 5z" />
+                      <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
                     </svg>
                   ),
-                  title: 'Sciences du Coran',
-                  desc: "Comprendre l'histoire, la révélation et la structure du Livre.",
+                  title: 'Hadith & Sīra',
+                  desc: "Un cheminement au cœur de la Sunna : la première année pose les bases avec la vie du Prophète ﷺ, ouvrant la voie à trois ans d'étude approfondie des hadiths qui structurent les fondements de notre foi.",
                 },
                 {
                   icon: (
@@ -76,8 +76,8 @@ export default function StudyPathSection() {
                       <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
                   ),
-                  title: 'Jurisprudence (Fiqh)',
-                  desc: 'Apprendre les règles de la pratique religieuse quotidienne.',
+                  title: 'Fiqh',
+                  desc: "Adorer Allah avec science et conscience : notre cursus de Fiqh débute en 1ère année par une introduction fondamentale, ouvrant la voie à 3 années d'étude approfondie des piliers de la pratique : Purification, Prière, Zakat, Jeûne, Hajj et Mariage.",
                 },
                 {
                   icon: (
@@ -85,8 +85,8 @@ export default function StudyPathSection() {
                       <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                     </svg>
                   ),
-                  title: "Éducation de l'Âme",
-                  desc: 'Purification du cœur et réforme du comportement.',
+                  title: 'Tazkiyah',
+                  desc: "Purifier son être en cheminant vers Allah : posez les fondements de la foi en 1ère année avec une introduction à la 'Aqīda, avant d'entamer un cycle de 3 ans dédié à l'éducation du nafs et la purification du cœur.",
                 },
               ].map((item, i) => (
                 <div key={i} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-start gap-4">
@@ -107,8 +107,8 @@ export default function StudyPathSection() {
                 </svg>
               </div>
               <div>
-                <h4 className="font-semibold text-gray-800">Fikr (Pensée & Réflexion islamique)</h4>
-                <p className="text-sm text-gray-500">Développer une pensée critique ancrée dans les sources islamiques pour comprendre le monde contemporain.</p>
+                <h4 className="font-semibold text-gray-800">Fikr (Pensée et réflexion)</h4>
+                <p className="text-sm text-gray-500">Libérer l'esprit des concepts importés et restaurer la pensée sur des bases authentiques : ce travail de déconstruction s'infuse d'abord de façon informelle dans toutes les matières en 1ère année, avant de devenir le cœur de conférences régulières et ciblées durant les 3 années suivantes.</p>
               </div>
             </div>
           </div>
@@ -127,7 +127,7 @@ export default function StudyPathSection() {
             style={{ borderColor: 'rgba(123,90,75,0.2)', borderLeftColor: 'transparent' }}
           >
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-2">
-              <h3 className="text-xl sm:text-2xl font-playfair font-bold text-secondary">Le Cycle d'Approfondissement</h3>
+              <h3 className="text-xl sm:text-2xl font-playfair font-bold text-secondary">Les Clés des Sciences : Vision Globale</h3>
               <span
                 className="text-white text-sm font-bold px-4 py-1 rounded-full mt-2 md:mt-0 shadow-sm"
                 style={{ backgroundColor: '#7B5A4B' }}
@@ -135,53 +135,18 @@ export default function StudyPathSection() {
                 Durée : 2 ans
               </span>
             </div>
-            <p className="text-gray-500 italic mb-8">Après les 4 ans de tronc commun, deux voies s'offrent à vous :</p>
+            <p className="text-gray-500 italic mb-8">Un cursus de 2 ans pour prendre de la hauteur.</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Voie A */}
-              <div className="bg-gray-50 p-6 rounded-xl border-t-4 border-gray-300">
-                <h4
-                  className="font-bold text-lg mb-2 italic underline decoration-dotted"
-                  style={{ color: '#7B5A4B' }}
-                >
-                  Voie de la Sagesse
-                </h4>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  <strong className="text-gray-800">Éducation de l'âme seule :</strong> Un cursus dédié exclusivement
-                  à l'aspect spirituel et à la profondeur du cœur pendant 2 années.
-                </p>
-              </div>
-              {/* Voie B */}
-              <div className="p-6 rounded-xl text-white shadow-md" style={{ backgroundColor: '#7B5A4B' }}>
-                <h4 className="font-bold text-lg mb-2 text-white italic underline decoration-dotted">
-                  Voie du Savoir Global
-                </h4>
-                <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.9)' }}>
-                  <strong className="text-white">Éducation & Introduction aux Sciences :</strong> Une combinaison
-                  équilibrée pour découvrir l'ensemble du panorama des sciences religieuses.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-8 flex justify-center">
-              <div
-                className="inline-flex items-center px-6 py-2 rounded-full border text-xs font-semibold uppercase tracking-widest shadow-sm"
-                style={{ borderColor: '#7B5A4B', color: '#7B5A4B', backgroundColor: '#FAF9F6' }}
-              >
-                Chaque voie ouvre l'accès aux spécialisations
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 ml-2"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.707 10.293a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-5-5a1 1 0 111.414-1.414L10 14.586l4.293-4.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
+            <div className="space-y-4 text-gray-600 text-xs sm:text-sm leading-relaxed">
+              <p>
+                Fort d'un premier cycle de quatre ans centré sur les connaissances fondamentales et indispensables à chaque croyant, ce nouveau parcours vous ouvre les portes d'une vision élargie et approfondie.
+              </p>
+              <p>
+                L'objectif est d'explorer les introductions méthodologiques de l'ensemble des sciences islamiques. En ouvrant de nouvelles perspectives, ce cursus de 2 ans offre à l'étudiant une vision globale, panoramique et d'une grande précision sur la manière dont ces sciences s'articulent et se répondent.
+              </p>
+              <p>
+                Durant ce cycle, vous explorerez les introductions fondamentales des disciplines clés : les Sciences du Quran, les Sciences du Hadith, la Science du Fiqh et de ses fondements, la Science de la Sīra…
+              </p>
             </div>
           </div>
         </div>
@@ -201,50 +166,18 @@ export default function StudyPathSection() {
               />
             </svg>
           </div>
-          <div className="bg-gray-800 p-8 md:p-10 rounded-2xl text-white shadow-2xl relative overflow-hidden group">
-            {/* Grille de fond décorative */}
-            <div className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-              <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                <defs>
-                  <pattern id="grid-fitra" width="10" height="10" patternUnits="userSpaceOnUse">
-                    <path d="M 10 0 L 0 0 0 10" fill="none" stroke="white" strokeWidth="0.5" />
-                  </pattern>
-                </defs>
-                <rect width="100" height="100" fill="url(#grid-fitra)" />
-              </svg>
-            </div>
-
-            <div className="relative z-10">
-              <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
-                <h3 className="text-xl sm:text-2xl font-playfair font-bold">Programmes de Spécialisation</h3>
-                <span
-                  className="text-white text-sm font-bold px-4 py-1 rounded-full mt-2 md:mt-0 italic shadow-sm"
-                  style={{ backgroundColor: '#7B5A4B' }}
-                >
-                  Durée indéterminée
-                </span>
-              </div>
-              <p className="text-gray-300 leading-relaxed max-w-2xl mb-8">
-                Pour les étudiants ayant complété le cycle d'introduction, ce palier offre une immersion académique de
-                haut niveau pour devenir un expert reconnu dans un domaine spécifique.
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  'Expertise en Jurisprudence (Fiqh)',
-                  'Exégèse & Sciences du Coran',
-                  'Hadith & Chaînes de Transmission',
-                  'Théologie & Dogme (Aquida)',
-                ].map((label, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-3 bg-white/10 p-4 rounded-xl border border-white/5 hover:bg-white/20 transition cursor-default"
-                  >
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#7B5A4B' }} />
-                    <span className="text-sm font-medium">{label}</span>
-                  </div>
-                ))}
-              </div>
+          <div
+            className="bg-white p-8 md:p-10 rounded-2xl border border-dashed hover:shadow-md transition-all duration-300"
+            style={{ borderColor: 'rgba(123,90,75,0.35)' }}
+          >
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+              <h3 className="text-xl sm:text-2xl font-playfair font-bold text-secondary">Programme de Spécialisation</h3>
+              <span
+                className="text-white text-sm font-bold px-4 py-1 rounded-full mt-2 md:mt-0 italic shadow-sm"
+                style={{ backgroundColor: '#7B5A4B' }}
+              >
+                À venir
+              </span>
             </div>
           </div>
         </div>

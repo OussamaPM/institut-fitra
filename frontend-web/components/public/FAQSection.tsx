@@ -11,22 +11,17 @@ const faqs = [
   {
     question: 'Comment se déroulent les cours ?',
     answer:
-      "Les cours ont lieu en ligne via une plateforme dédiée. Vous avez accès au direct pour interagir, ainsi qu'aux replays disponibles 24h/24 pour réviser à votre rythme.",
+      "Les cours ont lieu en ligne via une plateforme dédiée. Vous avez accès au direct pour interagir, ainsi qu'aux replays disponibles pendant 2 semaines pour réviser à votre rythme.",
   },
   {
     question: 'Est-ce que je recevrai un certificat ?',
     answer:
-      "Oui, une attestation de suivi est délivrée à la fin de chaque année validée, certifiant votre progression dans les thématiques étudiées.",
+      "À l'issue de votre cursus, une attestation de suivi vous sera remise. Elle atteste de votre investissement et de votre assiduité aux différentes matières enseignées.",
   },
   {
     question: 'Quel est le rythme des cours ?',
     answer:
-      "Les cours sont planifiés de manière à être compatibles avec une vie professionnelle et familiale. Vous pouvez suivre les sessions en direct ou en replay selon votre disponibilité.",
-  },
-  {
-    question: 'Y a-t-il un suivi personnalisé ?',
-    answer:
-      "Oui, chaque élève bénéficie d'un accompagnement personnalisé. Nos professeurs sont disponibles pour répondre à vos questions et vous guider dans votre apprentissage.",
+      "Les cours ont lieu deux fois par semaine, à raison d'une heure quinze par session en moyenne.",
   },
 ];
 
@@ -38,7 +33,7 @@ export default function FAQSection() {
   };
 
   return (
-    <section id="faq" className="py-12 sm:py-16 md:py-24 bg-background scroll-mt-20">
+    <section id="faq" className="pt-6 sm:pt-8 pb-12 sm:pb-16 md:pb-24 bg-background scroll-mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-8 sm:mb-12 md:mb-16">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-playfair font-bold text-secondary mb-3 sm:mb-4">Questions Fréquentes</h2>

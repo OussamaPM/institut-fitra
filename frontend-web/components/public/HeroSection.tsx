@@ -23,7 +23,7 @@ export default function HeroSection() {
             Un Cursus <br /> <span className="text-primary">Complet & Progressif</span>
           </h1>
           <p className="text-base sm:text-lg text-gray-600 mb-8 lg:mb-10 leading-relaxed max-w-lg">
-            Une formation d'excellence en sciences islamiques adaptée à tous, pour cheminer vers Allāh avec clairvoyance.
+            Étudier sa religion à travers un cursus complet, afin de cheminer vers Allāh avec clairvoyance
           </p>
           <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
             <Link
@@ -62,7 +62,7 @@ export default function HeroSection() {
           {/* Citation flottante */}
           <div className="absolute -bottom-4 -left-4 xl:-left-8 bg-white/90 backdrop-blur-md p-5 rounded-2xl shadow-xl max-w-[280px] border-l-4 border-primary">
             <p className="text-sm font-medium text-secondary leading-relaxed">
-              "Le plus complet possible, adapté au rythme de chacun."
+              "Une transmission pas à pas, un apprentissage à votre rythme"
             </p>
             <p className="text-xs text-primary font-bold mt-2">Institut Fitra</p>
           </div>
@@ -72,7 +72,7 @@ export default function HeroSection() {
         <div className="order-3 lg:hidden mt-8">
           <div className="bg-white/90 backdrop-blur-md p-5 rounded-2xl shadow-lg border-l-4 border-primary max-w-sm mx-auto">
             <p className="text-sm font-medium text-secondary leading-relaxed">
-              "Le plus complet possible, adapté au rythme de chacun."
+              "Une transmission pas à pas, un apprentissage à votre rythme"
             </p>
             <p className="text-xs text-primary font-bold mt-2">Institut Fitra</p>
           </div>
