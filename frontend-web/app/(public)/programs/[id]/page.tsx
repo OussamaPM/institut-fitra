@@ -43,9 +43,7 @@ export default function ProgramDetailPage() {
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const countryDropdownRef = useRef<HTMLDivElement>(null);
   const [selectedCountryCode, setSelectedCountryCode] = useState(countryCodes[0]); // France par défaut
   const [formData, setFormData] = useState({
@@ -60,9 +58,6 @@ export default function ProgramDetailPage() {
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
       if (countryDropdownRef.current && !countryDropdownRef.current.contains(event.target as Node)) {
         setIsCountryDropdownOpen(false);
       }
@@ -605,93 +600,27 @@ export default function ProgramDetailPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Mode de paiement
                       </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {/* Bouton Paiement unique */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFormData({ ...formData, installments_count: 1 });
-                            setIsDropdownOpen(false);
-                          }}
-                          disabled={isSubmitting}
-                          className={`p-3 border-2 rounded-lg transition-all text-left ${
-                            formData.installments_count === 1
-                              ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-                              : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-secondary text-xs sm:text-sm">
-                              Paiement unique
-                            </span>
-                            <span className="font-bold text-primary text-sm sm:text-base mt-0.5">
-                              {formatPrice(programPrice)}
-                            </span>
-                          </div>
-                        </button>
-
-                        {/* Bouton Paiement plusieurs fois avec dropdown */}
-                        <div className="relative" ref={dropdownRef}>
+                      <div className="flex flex-col gap-2">
+                        {[1, 2, 3, 5, 10].filter(n => n <= program.max_installments).map((num) => (
                           <button
+                            key={num}
                             type="button"
-                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            onClick={() => setFormData({ ...formData, installments_count: num })}
                             disabled={isSubmitting}
-                            className={`w-full p-3 border-2 rounded-lg transition-all text-left ${
-                              formData.installments_count > 1
+                            className={`p-3 border-2 rounded-lg transition-all text-left flex items-center justify-between ${
+                              formData.installments_count === num
                                 ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
                                 : 'border-gray-200 hover:border-gray-300'
                             }`}
                           >
-                            <div className="flex flex-col">
-                              <div className="flex items-center justify-between">
-                                <span className="font-semibold text-secondary text-xs sm:text-sm">
-                                  {formData.installments_count > 1
-                                    ? `${formData.installments_count}× sans frais`
-                                    : 'Plusieurs fois'}
-                                </span>
-                                <svg
-                                  className={`w-3 h-3 sm:w-4 sm:h-4 text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                              </div>
-                              <span className="font-bold text-primary text-sm sm:text-base mt-0.5">
-                                {formData.installments_count > 1
-                                  ? `${formatPrice(programPrice / formData.installments_count)}/mois`
-                                  : 'Choisir'}
-                              </span>
-                            </div>
+                            <span className="font-semibold text-secondary text-sm">
+                              {num === 1 ? 'Paiement unique' : `${num}× sans frais`}
+                            </span>
+                            <span className="font-bold text-primary text-sm">
+                              {num === 1 ? formatPrice(programPrice) : `${formatPrice(programPrice / num)}/mois`}
+                            </span>
                           </button>
-
-                          {/* Dropdown menu */}
-                          {isDropdownOpen && (
-                            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 overflow-hidden">
-                              {Array.from({ length: program.max_installments - 1 }, (_, i) => i + 2).map((num) => (
-                                <button
-                                  key={num}
-                                  type="button"
-                                  onClick={() => {
-                                    setFormData({ ...formData, installments_count: num });
-                                    setIsDropdownOpen(false);
-                                  }}
-                                  className={`w-full px-3 py-2.5 hover:bg-gray-50 transition-colors text-left ${
-                                    formData.installments_count === num ? 'bg-primary/5' : ''
-                                  }`}
-                                >
-                                  <div className="font-medium text-secondary text-sm">
-                                    {num}× sans frais
-                                  </div>
-                                  <div className="font-bold text-primary text-sm">
-                                    {formatPrice(programPrice / num)}/mois
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                        ))}
                       </div>
                       <p className="text-xs text-gray-500 mt-2">
                         Paiement en plusieurs fois sans frais

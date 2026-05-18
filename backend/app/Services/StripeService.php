@@ -187,28 +187,18 @@ class StripeService
         $totalFormatted = number_format($totalAmount, 2, ',', ' ');
         $installmentFormatted = number_format($amountPerInstallment, 2, ',', ' ');
 
-        // Créer un produit Stripe pour ce programme avec description claire
-        $product = Product::create([
-            'name' => "Inscription {$program->name}",
-            'description' => "Total : {$totalFormatted}€ en {$installmentsCount} mensualités de {$installmentFormatted}€",
-            'metadata' => [
-                'program_id' => $program->id,
-            ],
-        ]);
+        $unitAmount = (int) round($amountPerInstallment * 100);
 
-        // Créer un prix récurrent mensuel
-        $price = Price::create([
-            'product' => $product->id,
-            'unit_amount' => (int) round($amountPerInstallment * 100),
-            'currency' => 'eur',
-            'recurring' => [
-                'interval' => 'month',
-                'interval_count' => 1,
-            ],
-            'metadata' => [
-                'program_id' => $program->id,
-            ],
-        ]);
+        // Réutiliser un Price existant ou en créer un nouveau
+        $priceId = $this->findOrCreateSubscriptionPrice(
+            lookupKey: "program_{$program->id}_monthly_{$unitAmount}",
+            productName: "Inscription {$program->name}",
+            productDescription: "Total : {$totalFormatted}€ en {$installmentsCount} mensualités de {$installmentFormatted}€",
+            unitAmount: $unitAmount,
+            metadata: ['program_id' => $program->id]
+        );
+
+        $price = (object) ['id' => $priceId];
 
         $sessionParams = [
             'payment_method_types' => ['card'],
@@ -841,6 +831,44 @@ class StripeService
     }
 
     /**
+     * Trouver un Price Stripe existant par lookup_key ou en créer un nouveau.
+     * Évite de créer un nouveau Product+Price pour chaque checkout.
+     */
+    private function findOrCreateSubscriptionPrice(
+        string $lookupKey,
+        string $productName,
+        string $productDescription,
+        int $unitAmount,
+        array $metadata
+    ): string {
+        try {
+            $prices = Price::all(['lookup_keys' => [$lookupKey], 'active' => 'true', 'limit' => 1]);
+            if (! empty($prices->data)) {
+                return $prices->data[0]->id;
+            }
+        } catch (\Exception $e) {
+            Log::warning('Stripe Price lookup failed, creating new: '.$e->getMessage());
+        }
+
+        $product = Product::create([
+            'name' => $productName,
+            'description' => $productDescription,
+            'metadata' => $metadata,
+        ]);
+
+        $price = Price::create([
+            'product' => $product->id,
+            'unit_amount' => $unitAmount,
+            'currency' => 'eur',
+            'recurring' => ['interval' => 'month', 'interval_count' => 1],
+            'metadata' => $metadata,
+            'lookup_key' => $lookupKey,
+        ]);
+
+        return $price->id;
+    }
+
+    /**
      * Vérifier le statut d'une session checkout
      */
     public function getCheckoutSession(string $sessionId): ?array
@@ -1008,30 +1036,18 @@ class StripeService
         $installmentFormatted = number_format($amountPerInstallment, 2, ',', ' ');
         $productName = "{$level->program->name} - {$level->name}";
 
-        // Créer un produit Stripe pour ce niveau
-        $product = Product::create([
-            'name' => $productName,
-            'description' => "Total : {$totalFormatted}€ en {$installmentsCount} mensualités de {$installmentFormatted}€",
-            'metadata' => [
-                'program_id' => $level->program_id,
-                'program_level_id' => $level->id,
-            ],
-        ]);
+        $unitAmount = (int) round($amountPerInstallment * 100);
 
-        // Créer un prix récurrent mensuel
-        $price = Price::create([
-            'product' => $product->id,
-            'unit_amount' => (int) round($amountPerInstallment * 100),
-            'currency' => 'eur',
-            'recurring' => [
-                'interval' => 'month',
-                'interval_count' => 1,
-            ],
-            'metadata' => [
-                'program_id' => $level->program_id,
-                'program_level_id' => $level->id,
-            ],
-        ]);
+        // Réutiliser un Price existant ou en créer un nouveau
+        $priceId = $this->findOrCreateSubscriptionPrice(
+            lookupKey: "level_{$level->id}_monthly_{$unitAmount}",
+            productName: $productName,
+            productDescription: "Total : {$totalFormatted}€ en {$installmentsCount} mensualités de {$installmentFormatted}€",
+            unitAmount: $unitAmount,
+            metadata: ['program_id' => $level->program_id, 'program_level_id' => $level->id]
+        );
+
+        $price = (object) ['id' => $priceId];
 
         $sessionParams = [
             'payment_method_types' => ['card'],
