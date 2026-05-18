@@ -10,7 +10,7 @@ async function getSoleProgramId(): Promise<number | null> {
     const res = await fetch(`${apiUrl}/programs`, { cache: 'no-store' });
     if (!res.ok) return null;
     const data = await res.json();
-    const programs = Array.isArray(data) ? data : data.data || [];
+    const programs = Array.isArray(data) ? data : data.programs?.data || data.data || [];
     return programs.length === 1 ? programs[0].id : null;
   } catch {
     return null;
