@@ -22,30 +22,44 @@ function CheckoutSuccessContent() {
         return;
       }
 
-      try {
-        const result = await checkoutApi.getStatus(sessionId);
+      // Retry jusqu'à 6 fois (12s) pour laisser le webhook le temps d'être traité
+      const MAX_RETRIES = 6;
+      const RETRY_DELAY = 2000;
 
-        const sessionStatus = result.session?.status || result.session_status;
-        const paymentStatus = result.session?.payment_status || result.payment_status;
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          const result = await checkoutApi.getStatus(sessionId);
+          const paymentStatus = result.session?.payment_status;
+          const sessionStatus = result.session?.status;
 
-        if (sessionStatus === 'complete' && paymentStatus === 'paid') {
-          setStatus('success');
-        } else if (sessionStatus === 'open') {
-          setStatus('processing');
-        } else {
-          if (result.order?.status === 'paid' || result.order?.status === 'partial') {
+          if (sessionStatus === 'complete' && paymentStatus === 'paid') {
             setStatus('success');
-          } else {
+            setIsLoading(false);
+            return;
+          }
+
+          if (sessionStatus === 'expired' || sessionStatus === 'complete' && paymentStatus !== 'paid') {
             setStatus('error');
             setError('Le paiement n\'a pas pu être traité.');
+            setIsLoading(false);
+            return;
+          }
+
+          // Session encore ouverte ou webhook pas encore traité → on attend
+          if (attempt < MAX_RETRIES - 1) {
+            await new Promise(r => setTimeout(r, RETRY_DELAY));
+          }
+        } catch (err) {
+          console.error('Erreur vérification paiement:', err);
+          if (attempt < MAX_RETRIES - 1) {
+            await new Promise(r => setTimeout(r, RETRY_DELAY));
           }
         }
-      } catch (err: any) {
-        console.error('Error checking status:', err);
-        setStatus('success');
-      } finally {
-        setIsLoading(false);
       }
+
+      // Après tous les retries, on affiche "en cours de traitement"
+      setStatus('processing');
+      setIsLoading(false);
     };
 
     checkStatus();
@@ -114,7 +128,7 @@ function CheckoutSuccessContent() {
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               <Link
-                href="http://app.localhost:3000/auth/login"
+                href={`${process.env.NEXT_PUBLIC_APP_URL || 'https://app.institut-fitra.com'}/auth/login`}
                 className="inline-flex items-center justify-center px-6 sm:px-8 py-2.5 sm:py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm sm:text-base"
               >
                 <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

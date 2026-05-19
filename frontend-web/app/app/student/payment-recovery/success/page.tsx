@@ -20,16 +20,27 @@ function SuccessContent() {
   }, [sessionId]);
 
   const verifyPayment = async () => {
-    try {
-      const status = await checkoutApi.getStatus(sessionId!);
-      if (status.session?.payment_status === 'paid' || status.session?.status === 'complete') {
-        setIsSuccess(true);
+    const MAX_RETRIES = 6;
+    const RETRY_DELAY = 2000;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      try {
+        const status = await checkoutApi.getStatus(sessionId!);
+        if (status.session?.payment_status === 'paid' || status.session?.status === 'complete') {
+          setIsSuccess(true);
+          setIsLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Erreur vérification paiement:', err);
       }
-    } catch (err) {
-      console.error('Erreur lors de la verification du paiement:', err);
-    } finally {
-      setIsLoading(false);
+
+      if (attempt < MAX_RETRIES - 1) {
+        await new Promise(r => setTimeout(r, RETRY_DELAY));
+      }
     }
+
+    setIsLoading(false);
   };
 
   if (isLoading) {

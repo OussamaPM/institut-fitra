@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->enum('type', ['session', 'message', 'enrollment', 'material', 'other']);
+            $table->enum('type', ['session', 'message', 'enrollment', 'material', 'payment', 'level', 'tracking', 'other']);
             $table->string('title');
             $table->text('message');
             $table->timestamp('read_at')->nullable();

@@ -259,6 +259,12 @@ class StripeService
      */
     public function handleWebhook(string $payload, string $signature): array
     {
+        if (empty($this->webhookSecret)) {
+            Log::critical('Stripe webhook secret non configuré — requête rejetée');
+
+            return ['success' => false, 'error' => 'Webhook secret non configuré'];
+        }
+
         try {
             $event = Webhook::constructEvent(
                 $payload,
@@ -335,6 +341,14 @@ class StripeService
             return $this->handleRecoveryPaymentCompleted($session);
         }
 
+        // Idempotence : si la commande existe déjà, ne pas la recréer
+        $existingOrder = Order::where('stripe_checkout_session_id', $session->id)->first();
+        if ($existingOrder) {
+            Log::info("Webhook checkout.session.completed déjà traité — session {$session->id}, order #{$existingOrder->id}");
+
+            return ['success' => true, 'message' => 'Déjà traité'];
+        }
+
         // Vérifier les données requises
         $programId = $metadata->program_id ?? null;
         $classId = $metadata->class_id ?? null;
@@ -388,6 +402,7 @@ class StripeService
                 $order->update([
                     'stripe_subscription_id' => $session->subscription,
                     'stripe_price_id' => $metadata->stripe_price_id ?? null,
+                    'stripe_payment_intent_id' => $session->payment_intent ?? null,
                 ]);
 
                 // Créer les paiements planifiés
@@ -588,16 +603,17 @@ class StripeService
             return ['success' => true, 'message' => 'Commande introuvable'];
         }
 
-        // Récupérer la subscription pour vérifier les infos
-        try {
-            $subscription = Subscription::retrieve($invoice->subscription);
-        } catch (\Exception $e) {
-            Log::error('Erreur récupération subscription: '.$e->getMessage());
+        return DB::transaction(function () use ($order, $invoice) {
+            // Verrou pour éviter les race conditions si deux webhooks arrivent en parallèle
+            $order = Order::where('id', $order->id)->lockForUpdate()->first();
 
-            return ['success' => false, 'error' => 'Subscription introuvable'];
-        }
+            // Idempotence : si cette invoice a déjà été traitée, ne pas la retraiter
+            if ($order->payments()->where('stripe_invoice_id', $invoice->id)->where('status', 'succeeded')->exists()) {
+                Log::info("Invoice {$invoice->id} déjà traitée pour order #{$order->id}");
 
-        return DB::transaction(function () use ($order, $invoice, $subscription) {
+                return ['success' => true, 'message' => 'Déjà traité'];
+            }
+
             // Compter combien de paiements réussis on a
             $paidCount = $order->payments()->where('status', 'succeeded')->count();
             $installmentNumber = $paidCount + 1;
@@ -625,10 +641,11 @@ class StripeService
 
                 // Annuler l'abonnement car tous les paiements sont effectués
                 try {
+                    $subscription = Subscription::retrieve($invoice->subscription);
                     $subscription->cancel();
                     Log::info("Abonnement annulé après {$newPaidCount} paiements pour order #{$order->id}");
                 } catch (\Exception $e) {
-                    Log::error('Erreur annulation subscription: '.$e->getMessage());
+                    Log::critical("Erreur annulation subscription pour order #{$order->id} : ".$e->getMessage());
                 }
             } else {
                 $order->update(['status' => 'partial']);
@@ -1165,6 +1182,9 @@ class StripeService
                     'student_id' => $order->student_id,
                     'installment_number' => $failedPayment->installment_number,
                     'amount' => $amount,
+                    'customer_email' => $order->customer_email,
+                    'customer_first_name' => $order->customer_first_name ?? '',
+                    'customer_last_name' => $order->customer_last_name ?? '',
                 ],
             ];
 
@@ -1225,6 +1245,16 @@ class StripeService
                 return ['success' => false, 'error' => 'Paiement ou commande introuvable'];
             }
 
+            // Idempotence : ne pas créer deux paiements de régularisation pour le même paiement échoué
+            $existingRecovery = OrderPayment::where('recovery_for_payment_id', $failedPayment->id)
+                ->where('status', 'succeeded')
+                ->first();
+            if ($existingRecovery) {
+                Log::info("Recovery payment: régularisation déjà traitée pour paiement #{$failedPayment->id}");
+
+                return ['success' => true, 'message' => 'Régularisation déjà traitée'];
+            }
+
             // Créer un NOUVEAU paiement de régularisation lié au paiement échoué
             // Le paiement original reste avec status='failed' pour garder l'historique
             $recoveryPayment = OrderPayment::create([
@@ -1266,9 +1296,13 @@ class StripeService
             if ($uncoveredFailedPayments === 0 && $coveredPayments >= $order->installments_count) {
                 $order->update(['status' => 'paid']);
             } elseif ($uncoveredFailedPayments === 0) {
+                // Paiements restants tous planifiés ou couverts → en cours
+                $order->update(['status' => 'partial']);
+            } elseif ($coveredPayments > 0) {
+                // Au moins un paiement couvert mais d'autres encore échoués → partiel
                 $order->update(['status' => 'partial']);
             }
-            // Si encore des paiements échoués non régularisés, on laisse le statut 'failed'
+            // Tous les paiements échoués sans aucune régularisation → rester 'failed'
 
             // Créer une notification pour l'élève
             if ($order->student_id) {
