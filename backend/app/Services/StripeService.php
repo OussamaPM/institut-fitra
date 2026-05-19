@@ -652,7 +652,7 @@ class StripeService
             }
 
             // Créer une notification pour l'élève
-            if ($order->student_id) {
+            if ($order->student_id && $payment) {
                 Notification::create([
                     'user_id' => $order->student_id,
                     'type' => 'payment',
@@ -687,7 +687,17 @@ class StripeService
         }
 
         return DB::transaction(function () use ($order, $invoice) {
-            // Trouver le paiement planifié
+            // Idempotence : si cette invoice a déjà été traitée pour cet échec, ne pas dupliquer la notification
+            $alreadyProcessed = $order->payments()
+                ->where('stripe_invoice_id', $invoice->id)
+                ->exists();
+            if ($alreadyProcessed) {
+                Log::info("Invoice.payment_failed {$invoice->id} déjà traité pour order #{$order->id}");
+
+                return ['success' => true, 'message' => 'Déjà traité'];
+            }
+
+            // Trouver le paiement planifié le plus ancien (non encore lié à cette invoice)
             $payment = $order->payments()
                 ->where('status', 'scheduled')
                 ->orderBy('installment_number')
@@ -705,8 +715,8 @@ class StripeService
                 ]);
             }
 
-            // Créer une notification pour l'élève
-            if ($order->student_id) {
+            // Créer une notification pour l'élève uniquement si le paiement est trouvé
+            if ($order->student_id && $payment) {
                 $nextRetry = $invoice->next_payment_attempt
                     ? \Carbon\Carbon::createFromTimestamp($invoice->next_payment_attempt)->format('d/m/Y')
                     : null;
@@ -784,11 +794,15 @@ class StripeService
         }
 
         return DB::transaction(function () use ($order, $invoice) {
-            // Marquer le paiement comme échoué définitivement
+            // Trouver le paiement lié à cette invoice (déjà mis à jour par invoice.payment_failed)
+            // ou à défaut le premier paiement scheduled
             $payment = $order->payments()
-                ->where('status', 'scheduled')
-                ->orderBy('installment_number')
-                ->first();
+                ->where('stripe_invoice_id', $invoice->id)
+                ->first()
+                ?? $order->payments()
+                    ->where('status', 'scheduled')
+                    ->orderBy('installment_number')
+                    ->first();
 
             if ($payment) {
                 $payment->update([
@@ -832,16 +846,41 @@ class StripeService
         }
 
         // Vérifier si tous les paiements sont effectués
-        $paidCount = $order->payments()->where('status', 'succeeded')->count();
+        $paidCount = $order->payments()
+            ->where('status', 'succeeded')
+            ->where('is_recovery_payment', false)
+            ->count();
 
         if ($paidCount >= $order->installments_count) {
             // Abonnement annulé normalement après tous les paiements
             Log::info("Subscription cancelled (completed): order #{$order->id}");
         } else {
-            // Abonnement annulé prématurément
+            // Abonnement annulé prématurément : annuler les paiements scheduled restants
             Log::warning("Subscription cancelled early: order #{$order->id}, {$paidCount}/{$order->installments_count} payments");
 
-            // Notification pour l'admin pourrait être ajoutée ici
+            DB::transaction(function () use ($order) {
+                $order->payments()
+                    ->where('status', 'scheduled')
+                    ->update([
+                        'status' => 'failed',
+                        'error_message' => 'Abonnement annulé prématurément',
+                    ]);
+
+                if ($order->status !== 'paid') {
+                    $order->update(['status' => 'failed']);
+                }
+
+                if ($order->student_id) {
+                    Notification::create([
+                        'user_id' => $order->student_id,
+                        'type' => 'payment',
+                        'category' => 'payment_uncollectible',
+                        'title' => 'Abonnement annulé',
+                        'message' => 'Votre abonnement de paiement a été annulé. Veuillez contacter l\'administration.',
+                        'action_url' => '/student/profile',
+                    ]);
+                }
+            });
         }
 
         return ['success' => true, 'message' => 'Annulation subscription traitée'];
@@ -897,9 +936,7 @@ class StripeService
                 'id' => $session->id,
                 'status' => $session->status,
                 'payment_status' => $session->payment_status,
-                'customer_email' => $session->customer_details->email ?? null,
                 'amount_total' => $session->amount_total / 100,
-                'metadata' => $session->metadata,
             ];
         } catch (ApiErrorException $e) {
             Log::error('Stripe getCheckoutSession error: '.$e->getMessage());
@@ -1279,10 +1316,6 @@ class StripeService
                             $q->where('status', 'succeeded');
                         });
                 })
-                ->count();
-
-            $totalOriginalPayments = $order->payments()
-                ->where('is_recovery_payment', false)
                 ->count();
 
             $uncoveredFailedPayments = $order->payments()

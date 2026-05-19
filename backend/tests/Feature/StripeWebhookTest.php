@@ -807,7 +807,269 @@ class StripeWebhookTest extends TestCase
     }
 
     // ─────────────────────────────────────────────────────────────
-    // 8. UNKNOWN EVENT — doit être accepté sans erreur
+    // 8. INVOICE.PAYMENT_FAILED — idempotence (double webhook)
+    // ─────────────────────────────────────────────────────────────
+
+    /** @test */
+    public function test_invoice_payment_failed_is_idempotent(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        [$program, $class] = $this->makeProgram();
+
+        $order = Order::factory()->create([
+            'student_id'             => $student->id,
+            'program_id'             => $program->id,
+            'class_id'               => $class->id,
+            'status'                 => 'partial',
+            'installments_count'     => 2,
+            'stripe_subscription_id' => 'sub_idempotent_fail',
+            'payment_method'         => 'stripe',
+        ]);
+
+        OrderPayment::create([
+            'order_id'            => $order->id,
+            'amount'              => 100,
+            'installment_number'  => 1,
+            'status'              => 'succeeded',
+            'paid_at'             => now()->subMonth(),
+            'is_recovery_payment' => false,
+        ]);
+
+        OrderPayment::create([
+            'order_id'            => $order->id,
+            'amount'              => 100,
+            'installment_number'  => 2,
+            'status'              => 'scheduled',
+            'scheduled_at'        => now(),
+            'is_recovery_payment' => false,
+        ]);
+
+        $event = [
+            'type' => 'invoice.payment_failed',
+            'data' => [
+                'object' => [
+                    'id'                      => 'in_idempotent_fail',
+                    'subscription'            => 'sub_idempotent_fail',
+                    'payment_intent'          => 'pi_fail',
+                    'billing_reason'          => 'subscription_cycle',
+                    'attempt_count'           => 1,
+                    'next_payment_attempt'    => now()->addDays(3)->timestamp,
+                    'last_finalization_error' => null,
+                ],
+            ],
+        ];
+
+        // Même webhook envoyé 2 fois
+        $this->webhook($event)->assertStatus(200);
+        $this->webhook($event)->assertStatus(200);
+
+        // Une seule notification créée
+        $this->assertDatabaseCount('notifications', 1);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 9. INVOICE.MARKED_UNCOLLECTIBLE — cible le bon paiement
+    // ─────────────────────────────────────────────────────────────
+
+    /** @test */
+    public function test_invoice_uncollectible_marks_correct_payment_failed(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        [$program, $class] = $this->makeProgram();
+
+        $order = Order::factory()->create([
+            'student_id'             => $student->id,
+            'program_id'             => $program->id,
+            'class_id'               => $class->id,
+            'status'                 => 'partial',
+            'installments_count'     => 3,
+            'stripe_subscription_id' => 'sub_uncollectible',
+            'payment_method'         => 'stripe',
+        ]);
+
+        OrderPayment::create([
+            'order_id'            => $order->id,
+            'amount'              => 100,
+            'installment_number'  => 1,
+            'status'              => 'succeeded',
+            'paid_at'             => now()->subMonths(2),
+            'is_recovery_payment' => false,
+        ]);
+
+        // Paiement 2 déjà marqué avec l'invoice par invoice.payment_failed
+        $payment2 = OrderPayment::create([
+            'order_id'            => $order->id,
+            'amount'              => 100,
+            'installment_number'  => 2,
+            'status'              => 'scheduled',
+            'stripe_invoice_id'   => 'in_uncollectible_inv',
+            'scheduled_at'        => now()->subMonth(),
+            'is_recovery_payment' => false,
+        ]);
+
+        // Paiement 3 — ne doit PAS être touché
+        $payment3 = OrderPayment::create([
+            'order_id'            => $order->id,
+            'amount'              => 100,
+            'installment_number'  => 3,
+            'status'              => 'scheduled',
+            'scheduled_at'        => now(),
+            'is_recovery_payment' => false,
+        ]);
+
+        $event = [
+            'type' => 'invoice.marked_uncollectible',
+            'data' => [
+                'object' => [
+                    'id'           => 'in_uncollectible_inv',
+                    'subscription' => 'sub_uncollectible',
+                ],
+            ],
+        ];
+
+        $this->webhook($event)->assertStatus(200);
+
+        // Paiement 2 marqué failed (celui lié à l'invoice)
+        $payment2->refresh();
+        $this->assertEquals('failed', $payment2->status);
+
+        // Paiement 3 NON touché (toujours scheduled)
+        $payment3->refresh();
+        $this->assertEquals('scheduled', $payment3->status);
+
+        // Commande marquée failed
+        $order->refresh();
+        $this->assertEquals('failed', $order->status);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 10. CUSTOMER.SUBSCRIPTION.DELETED — annulation prématurée
+    // ─────────────────────────────────────────────────────────────
+
+    /** @test */
+    public function test_subscription_cancelled_early_marks_scheduled_payments_failed(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        [$program, $class] = $this->makeProgram();
+
+        $order = Order::factory()->create([
+            'student_id'             => $student->id,
+            'program_id'             => $program->id,
+            'class_id'               => $class->id,
+            'status'                 => 'partial',
+            'installments_count'     => 3,
+            'stripe_subscription_id' => 'sub_early_cancel',
+            'payment_method'         => 'stripe',
+        ]);
+
+        OrderPayment::create([
+            'order_id'            => $order->id,
+            'amount'              => 100,
+            'installment_number'  => 1,
+            'status'              => 'succeeded',
+            'paid_at'             => now()->subMonth(),
+            'is_recovery_payment' => false,
+        ]);
+
+        $payment2 = OrderPayment::create([
+            'order_id'            => $order->id,
+            'amount'              => 100,
+            'installment_number'  => 2,
+            'status'              => 'scheduled',
+            'scheduled_at'        => now(),
+            'is_recovery_payment' => false,
+        ]);
+
+        $payment3 = OrderPayment::create([
+            'order_id'            => $order->id,
+            'amount'              => 100,
+            'installment_number'  => 3,
+            'status'              => 'scheduled',
+            'scheduled_at'        => now()->addMonth(),
+            'is_recovery_payment' => false,
+        ]);
+
+        $event = [
+            'type' => 'customer.subscription.deleted',
+            'data' => [
+                'object' => [
+                    'id'     => 'sub_early_cancel',
+                    'status' => 'canceled',
+                ],
+            ],
+        ];
+
+        $this->webhook($event)->assertStatus(200);
+
+        // Les deux paiements scheduled marqués failed
+        $payment2->refresh();
+        $this->assertEquals('failed', $payment2->status);
+        $payment3->refresh();
+        $this->assertEquals('failed', $payment3->status);
+
+        // Commande marquée failed
+        $order->refresh();
+        $this->assertEquals('failed', $order->status);
+
+        // Notification envoyée
+        $this->assertDatabaseHas('notifications', [
+            'user_id'  => $student->id,
+            'type'     => 'payment',
+            'category' => 'payment_uncollectible',
+        ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 11. INVOICE.PAYMENT_FAILED — null-safe quand aucun paiement scheduled
+    // ─────────────────────────────────────────────────────────────
+
+    /** @test */
+    public function test_invoice_payment_failed_safe_when_no_scheduled_payment(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        [$program, $class] = $this->makeProgram();
+
+        $order = Order::factory()->create([
+            'student_id'             => $student->id,
+            'program_id'             => $program->id,
+            'class_id'               => $class->id,
+            'status'                 => 'paid',
+            'installments_count'     => 1,
+            'stripe_subscription_id' => 'sub_no_scheduled',
+            'payment_method'         => 'stripe',
+        ]);
+
+        OrderPayment::create([
+            'order_id'            => $order->id,
+            'amount'              => 265,
+            'installment_number'  => 1,
+            'status'              => 'succeeded',
+            'paid_at'             => now()->subMonth(),
+            'is_recovery_payment' => false,
+        ]);
+
+        // Aucun paiement scheduled — ne doit pas planter
+        $event = [
+            'type' => 'invoice.payment_failed',
+            'data' => [
+                'object' => [
+                    'id'                      => 'in_no_scheduled',
+                    'subscription'            => 'sub_no_scheduled',
+                    'payment_intent'          => 'pi_no_scheduled',
+                    'billing_reason'          => 'subscription_cycle',
+                    'attempt_count'           => 1,
+                    'next_payment_attempt'    => null,
+                    'last_finalization_error' => null,
+                ],
+            ],
+        ];
+
+        // Ne doit pas retourner 400 (pas de fatal error sur $payment->amount)
+        $this->webhook($event)->assertStatus(200);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 12. UNKNOWN EVENT — doit être accepté sans erreur
     // ─────────────────────────────────────────────────────────────
 
     /** @test */
