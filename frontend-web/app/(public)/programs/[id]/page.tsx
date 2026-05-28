@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Program, ClassModel } from '@/lib/types';
+import { Program } from '@/lib/types';
 import checkoutApi from '@/lib/api/checkout';
 
 export default function ProgramDetailPage() {
@@ -11,7 +11,6 @@ export default function ProgramDetailPage() {
   const programId = parseInt(params.id as string);
 
   const [program, setProgram] = useState<Program | null>(null);
-  const [classes, setClasses] = useState<ClassModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -77,16 +76,6 @@ export default function ProgramDetailPage() {
         if (!programResponse.ok) throw new Error('Programme introuvable');
         const programData = await programResponse.json();
         setProgram(programData.program || programData);
-
-        // Fetch classes for this program
-        const classesResponse = await fetch(`${apiUrl}/classes?program_id=${programId}`);
-        if (classesResponse.ok) {
-          const classesData = await classesResponse.json();
-          const classesArray = Array.isArray(classesData)
-            ? classesData
-            : classesData.data || classesData.classes?.data || [];
-          setClasses(classesArray.filter((c: ClassModel) => c.program_id === programId));
-        }
       } catch (err) {
         console.error('Erreur:', err);
         setError('Programme introuvable.');
@@ -328,42 +317,6 @@ export default function ProgramDetailPage() {
                   </div>
                 )}
 
-                {/* Classes disponibles */}
-                {classes.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold text-secondary mb-2 sm:mb-3 text-sm sm:text-base">
-                      Classes disponibles ({classes.length})
-                    </h3>
-                    <div className="space-y-2">
-                      {classes.slice(0, 3).map((classItem) => (
-                        <div
-                          key={classItem.id}
-                          className="p-2.5 sm:p-3 bg-background rounded-lg border border-gray-200"
-                        >
-                          <div className="font-medium text-secondary text-xs sm:text-sm">
-                            {classItem.name}
-                          </div>
-                          <div className="text-xs text-gray-600 mt-1">
-                            {new Date(classItem.start_date).toLocaleDateString('fr-FR')} -{' '}
-                            {new Date(classItem.end_date).toLocaleDateString('fr-FR')}
-                          </div>
-                          {classItem.max_students && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              {classItem.enrolled_students_count || 0}/{classItem.max_students}{' '}
-                              places
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      {classes.length > 3 && (
-                        <p className="text-xs sm:text-sm text-gray-500">
-                          Et {classes.length - 3} autre{classes.length - 3 > 1 ? 's' : ''}{' '}
-                          classe{classes.length - 3 > 1 ? 's' : ''}...
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>

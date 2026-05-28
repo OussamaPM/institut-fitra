@@ -78,7 +78,9 @@ class StripeService
             $totalAmount = (float) $program->price;
             $amountPerInstallment = $totalAmount / $installmentsCount;
 
-            $frontendUrl = config('app.frontend_url', env('FRONTEND_URL'));
+            // Le checkout public est initié depuis le site vitrine : le retour Stripe
+            // doit pointer vers le domaine public (sans le sous-domaine app.), où vit /checkout/success
+            $frontendUrl = str_replace('://app.', '://', (string) config('app.frontend_url', env('FRONTEND_URL')));
 
             // Mode paiement unique
             if ($installmentsCount === 1) {
