@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Mail\EnrollmentConfirmationMail;
 use App\Mail\NewAccountCredentialsMail;
+use App\Mail\ReinscriptionConfirmationMail;
 use App\Models\Enrollment;
 use App\Models\Notification;
 use App\Models\Order;
@@ -527,10 +528,15 @@ class StripeService
             $logType = $isReinscription ? 'Réinscription' : 'Inscription';
             Log::info("{$logType} créée pour student #{$student->id} dans class #{$order->class_id}");
 
-            // Envoyer l'email de confirmation d'inscription
+            // Envoyer l'email de confirmation (réinscription ou inscription initiale)
             try {
                 $enrollment->load('class.program');
-                Mail::to($student->email)->send(new EnrollmentConfirmationMail($student, $enrollment));
+                if ($isReinscription) {
+                    $level = $order->program_level_id ? ProgramLevel::find($order->program_level_id) : null;
+                    Mail::to($student->email)->send(new ReinscriptionConfirmationMail($student, $enrollment, $level));
+                } else {
+                    Mail::to($student->email)->send(new EnrollmentConfirmationMail($student, $enrollment));
+                }
             } catch (\Exception $e) {
                 Log::error('Enrollment confirmation email error (Stripe): '.$e->getMessage());
             }
