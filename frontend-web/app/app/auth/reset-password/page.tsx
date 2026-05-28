@@ -50,7 +50,6 @@ function ResetPasswordForm() {
         password_confirmation: passwordConfirmation,
       });
       setSuccess(true);
-      setTimeout(() => router.push('/auth/login'), 3000);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Une erreur est survenue.');
     } finally {
@@ -89,7 +88,14 @@ function ResetPasswordForm() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-green-800 font-medium mb-1">Mot de passe modifié !</p>
-              <p className="text-green-700 text-sm">Vous allez être redirigé vers la page de connexion...</p>
+              <p className="text-green-700 text-sm mb-4">Votre mot de passe a été réinitialisé avec succès.</p>
+              <Button
+                variant="primary"
+                fullWidth
+                onClick={() => router.push('/auth/login')}
+              >
+                Me connecter
+              </Button>
             </div>
           ) : (
             <>

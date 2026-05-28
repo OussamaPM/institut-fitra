@@ -1,5 +1,5 @@
 import apiClient from './client';
-import { AvailableReinscription } from '@/lib/types';
+import { AvailableReinscription, ProgramLevel } from '@/lib/types';
 
 export interface LevelsHistory {
   [programId: string]: {
@@ -45,6 +45,16 @@ export const reinscriptionApi = {
       '/student/reinscriptions'
     );
     return response.data.reinscriptions;
+  },
+
+  /**
+   * Get a single level's details for reinscription (student-accessible, read-only)
+   */
+  getLevel: async (levelId: number): Promise<ProgramLevel> => {
+    const response = await apiClient.get<{ level: ProgramLevel }>(
+      `/student/reinscription/levels/${levelId}`
+    );
+    return response.data.level;
   },
 
   /**

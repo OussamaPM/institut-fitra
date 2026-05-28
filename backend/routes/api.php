@@ -84,6 +84,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
         // Student reinscription (Réinscription aux niveaux supérieurs)
         Route::get('/student/reinscriptions', [StudentReinscriptionController::class, 'index']);
+        Route::get('/student/reinscription/levels/{level}', [StudentReinscriptionController::class, 'showLevel']);
         Route::get('/student/levels-history', [StudentReinscriptionController::class, 'history']);
         Route::post('/checkout/reinscription', [CheckoutController::class, 'createReinscriptionSession']);
 

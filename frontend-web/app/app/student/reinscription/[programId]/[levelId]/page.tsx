@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { programLevelsApi } from '@/lib/api/program-levels';
 import { reinscriptionApi } from '@/lib/api/reinscription';
 import { ProgramLevel } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
@@ -33,7 +32,7 @@ export default function ReinscriptionCheckoutPage() {
     try {
       setIsLoading(true);
       setError('');
-      const levelData = await programLevelsApi.getById(programId, levelId);
+      const levelData = await reinscriptionApi.getLevel(levelId);
       setLevel(levelData);
       setInstallmentsCount(1);
       // Pré-sélectionner la classe si une seule activation

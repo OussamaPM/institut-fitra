@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\ProgramLevel;
 use App\Models\User;
 use App\Services\ProgramLevelService;
 use Illuminate\Http\JsonResponse;
@@ -59,5 +60,21 @@ class StudentReinscriptionController extends Controller
             'student' => $student->load('studentProfile'),
             'history' => $history,
         ]);
+    }
+
+    /**
+     * Détails d'un niveau pour la réinscription élève (lecture seule).
+     * Limité aux niveaux réellement activés (publiés).
+     */
+    public function showLevel(ProgramLevel $level): JsonResponse
+    {
+        $level->load(['teacher.teacherProfile', 'activations.class', 'program']);
+
+        // Un élève ne peut consulter qu'un niveau activé pour au moins une classe
+        if ($level->activations->isEmpty()) {
+            return response()->json(['message' => 'Ce niveau n\'est pas disponible.'], 403);
+        }
+
+        return response()->json(['level' => $level]);
     }
 }
