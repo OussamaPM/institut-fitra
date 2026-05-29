@@ -507,6 +507,7 @@ export interface QuizQuestion {
   quiz_id: number;
   question_text: string;
   type: QuizQuestionType;
+  answer_explanation?: string | null;
   options?: QuizOption[];
   order: number;
   created_at?: string;
@@ -571,6 +572,7 @@ export interface CreateQuizData {
   questions: {
     question_text: string;
     type: QuizQuestionType;
+    answer_explanation?: string;
     options?: { option_text: string; is_correct: boolean }[];
   }[];
 }

@@ -17,6 +17,7 @@ class QuizQuestion extends Model
         'quiz_id',
         'question_text',
         'type',
+        'answer_explanation',
         'order',
     ];
 

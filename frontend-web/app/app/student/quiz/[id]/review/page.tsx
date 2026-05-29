@@ -231,6 +231,16 @@ export default function QuizReviewPage() {
                     </p>
                   </div>
                 )}
+
+                {question.answer_explanation && (
+                  <div className="ml-8 mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-xs font-medium text-amber-700 mb-1 flex items-center gap-1.5">
+                      <BookOpen size={14} />
+                      Détail de la réponse
+                    </p>
+                    <p className="text-sm text-amber-900 whitespace-pre-wrap">{question.answer_explanation}</p>
+                  </div>
+                )}
               </div>
             );
           })}

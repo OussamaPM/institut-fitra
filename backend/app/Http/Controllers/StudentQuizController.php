@@ -54,11 +54,12 @@ class StudentQuizController extends Controller
             ->where('student_id', $student->id)
             ->first();
 
-        // Charger les questions sans exposer is_correct aux élèves
+        // Charger les questions sans exposer is_correct ni le détail de la réponse aux élèves
         $quiz->load(['questions' => function ($query): void {
-            $query->with(['options' => function ($q): void {
-                $q->select('id', 'question_id', 'option_text', 'order');
-            }]);
+            $query->select('id', 'quiz_id', 'question_text', 'type', 'order')
+                ->with(['options' => function ($q): void {
+                    $q->select('id', 'question_id', 'option_text', 'order');
+                }]);
         }]);
 
         return response()->json([

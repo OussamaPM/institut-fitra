@@ -53,6 +53,7 @@ class QuizController extends Controller
             'questions' => 'required|array|min:1',
             'questions.*.question_text' => 'required|string',
             'questions.*.type' => 'required|in:multiple_choice,free_text',
+            'questions.*.answer_explanation' => 'nullable|string',
             'questions.*.options' => 'required_if:questions.*.type,multiple_choice|array|min:2',
             'questions.*.options.*.option_text' => 'required_with:questions.*.options|string',
             'questions.*.options.*.is_correct' => 'required_with:questions.*.options|boolean',
@@ -78,6 +79,7 @@ class QuizController extends Controller
                     'quiz_id' => $quiz->id,
                     'question_text' => $questionData['question_text'],
                     'type' => $questionData['type'],
+                    'answer_explanation' => $questionData['answer_explanation'] ?? null,
                     'order' => $index,
                 ]);
 
@@ -146,6 +148,7 @@ class QuizController extends Controller
             'questions' => 'sometimes|array|min:1',
             'questions.*.question_text' => 'required|string',
             'questions.*.type' => 'required|in:multiple_choice,free_text',
+            'questions.*.answer_explanation' => 'nullable|string',
             'questions.*.options' => 'required_if:questions.*.type,multiple_choice|array|min:2',
             'questions.*.options.*.option_text' => 'required_with:questions.*.options|string',
             'questions.*.options.*.is_correct' => 'required_with:questions.*.options|boolean',

@@ -41,6 +41,7 @@ interface QuizOptionDraft {
 interface QuizQuestionDraft {
   question_text: string;
   type: QuizQuestionType;
+  answer_explanation: string;
   options: QuizOptionDraft[];
 }
 
@@ -82,6 +83,7 @@ export default function SessionDetailModal({
   const [quizTitle, setQuizTitle] = useState('');
   const [quizDescription, setQuizDescription] = useState('');
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestionDraft[]>([]);
+  const [openExplanations, setOpenExplanations] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     fetchMaterials();
@@ -113,7 +115,7 @@ export default function SessionDetailModal({
   };
 
   const addQuestion = () => {
-    setQuizQuestions([...quizQuestions, { question_text: '', type: 'multiple_choice', options: [{ option_text: '', is_correct: true }, { option_text: '', is_correct: false }] }]);
+    setQuizQuestions([...quizQuestions, { question_text: '', type: 'multiple_choice', answer_explanation: '', options: [{ option_text: '', is_correct: true }, { option_text: '', is_correct: false }] }]);
   };
 
   const removeQuestion = (index: number) => {
@@ -173,14 +175,16 @@ export default function SessionDetailModal({
         (existing.questions || []).map((q) => ({
           question_text: q.question_text,
           type: q.type,
+          answer_explanation: q.answer_explanation || '',
           options: (q.options || []).map((o) => ({ option_text: o.option_text, is_correct: o.is_correct ?? false })),
         }))
       );
     } else {
       setQuizTitle('');
       setQuizDescription('');
-      setQuizQuestions([{ question_text: '', type: 'multiple_choice', options: [{ option_text: '', is_correct: true }, { option_text: '', is_correct: false }] }]);
+      setQuizQuestions([{ question_text: '', type: 'multiple_choice', answer_explanation: '', options: [{ option_text: '', is_correct: true }, { option_text: '', is_correct: false }] }]);
     }
+    setOpenExplanations({});
     setShowQuizForm(true);
   };
 
@@ -198,11 +202,19 @@ export default function SessionDetailModal({
 
     try {
       setSavingQuiz(true);
+      // Ne pas envoyer d'options pour les questions à réponse libre (le backend
+      // valide min:2 options dès que le champ est présent)
+      const payloadQuestions = quizQuestions.map((q) => ({
+        question_text: q.question_text,
+        type: q.type,
+        answer_explanation: q.answer_explanation.trim() || undefined,
+        ...(q.type === 'multiple_choice' ? { options: q.options } : {}),
+      }));
       if (quiz) {
-        const updated = await quizzesApi.update(quiz.id, { title: quizTitle, description: quizDescription, questions: quizQuestions });
+        const updated = await quizzesApi.update(quiz.id, { title: quizTitle, description: quizDescription, questions: payloadQuestions });
         setQuiz(updated);
       } else {
-        const created = await quizzesApi.create({ session_id: session.id, class_id: session.class_id, title: quizTitle, description: quizDescription, questions: quizQuestions });
+        const created = await quizzesApi.create({ session_id: session.id, class_id: session.class_id, title: quizTitle, description: quizDescription, questions: payloadQuestions });
         setQuiz(created);
       }
       setShowQuizForm(false);
@@ -831,6 +843,30 @@ export default function SessionDetailModal({
                           </button>
                         </div>
                       )}
+
+                      {/* Détail de la réponse (affiché à l'élève après soumission) */}
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <button
+                          type="button"
+                          onClick={() => setOpenExplanations((prev) => ({ ...prev, [qIndex]: !prev[qIndex] }))}
+                          className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80"
+                        >
+                          {openExplanations[qIndex] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          Détail de la réponse
+                          {question.answer_explanation.trim() && !openExplanations[qIndex] && (
+                            <span className="text-[10px] text-gray-400">(renseigné)</span>
+                          )}
+                        </button>
+                        {openExplanations[qIndex] && (
+                          <textarea
+                            value={question.answer_explanation}
+                            onChange={(e) => updateQuestion(qIndex, 'answer_explanation', e.target.value)}
+                            placeholder="Explication affichée à l'élève après soumission (optionnel)"
+                            rows={3}
+                            className="input w-full text-sm mt-2 resize-none"
+                          />
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
