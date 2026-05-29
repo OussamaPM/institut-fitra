@@ -50,6 +50,10 @@ class OrderController extends Controller
                         ->whereDoesntHave('recoveryPayment', function ($rq) {
                             $rq->where('status', 'succeeded');
                         });
+                }])
+                // Compter les paiements remboursés
+                ->withCount(['payments as refunded_payments_count' => function ($q) {
+                    $q->where('status', 'refunded');
                 }]);
 
             // Filtres

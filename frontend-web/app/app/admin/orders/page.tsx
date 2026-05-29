@@ -419,10 +419,31 @@ export default function OrdersPage() {
                             )}
                           </div>
                         )}
+                        {/* Refunded payments */}
+                        {order.refunded_payments_count !== undefined && order.refunded_payments_count > 0 && (
+                          <div className="relative group">
+                            <span className="text-xs text-gray-500 font-medium cursor-help">
+                              {order.refunded_payments_count} remboursé(s)
+                            </span>
+                            {order.payments && order.payments.filter(p => p.status === 'refunded').length > 0 && (
+                              <div className="absolute z-10 invisible group-hover:visible bg-gray-800 text-white text-xs rounded p-2 -top-2 left-full ml-2 whitespace-nowrap">
+                                {order.payments
+                                  .filter(p => p.status === 'refunded')
+                                  .map((payment, idx) => (
+                                    <div key={idx}>
+                                      {formatPrice(payment.amount)} - Échéance {payment.installment_number}
+                                    </div>
+                                  ))
+                                }
+                              </div>
+                            )}
+                          </div>
+                        )}
                         {/* If no payments info */}
                         {(order.successful_payments_count === 0 || order.successful_payments_count === undefined) &&
                          (order.pending_payments_count === 0 || order.pending_payments_count === undefined) &&
-                         (order.failed_payments_count === 0 || order.failed_payments_count === undefined) && (
+                         (order.failed_payments_count === 0 || order.failed_payments_count === undefined) &&
+                         (order.refunded_payments_count === 0 || order.refunded_payments_count === undefined) && (
                           <span className="text-xs text-gray-400">-</span>
                         )}
                       </div>

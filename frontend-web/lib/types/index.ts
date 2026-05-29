@@ -400,6 +400,7 @@ export interface Order {
   successful_payments_count?: number;
   pending_payments_count?: number;
   failed_payments_count?: number;
+  refunded_payments_count?: number;
 }
 
 export interface OrderStats {
