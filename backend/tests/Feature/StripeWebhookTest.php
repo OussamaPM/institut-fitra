@@ -1141,6 +1141,65 @@ class StripeWebhookTest extends TestCase
     }
 
     /** @test */
+    public function test_charge_refunded_matches_first_installment_by_customer_and_amount(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        [$program, $class] = $this->makeProgram();
+
+        $order = Order::factory()->create([
+            'student_id'             => $student->id,
+            'program_id'             => $program->id,
+            'class_id'               => $class->id,
+            'status'                 => 'partial',
+            'installments_count'     => 4,
+            'stripe_subscription_id' => 'sub_refund_fb',
+            'stripe_customer_id'     => 'cus_refund_fb',
+            'payment_method'         => 'stripe',
+        ]);
+
+        // 1er versement encaissé SANS payment_intent stocké
+        $payment = OrderPayment::create([
+            'order_id'            => $order->id,
+            'amount'              => 1.25,
+            'installment_number'  => 1,
+            'status'              => 'succeeded',
+            'paid_at'             => now(),
+            'is_recovery_payment' => false,
+        ]);
+        OrderPayment::create([
+            'order_id'            => $order->id,
+            'amount'              => 1.25,
+            'installment_number'  => 2,
+            'status'              => 'scheduled',
+            'scheduled_at'        => now()->addMonth(),
+            'is_recovery_payment' => false,
+        ]);
+
+        $event = [
+            'type' => 'charge.refunded',
+            'data' => [
+                'object' => [
+                    'id'              => 'ch_fb',
+                    'payment_intent'  => 'pi_non_stocke',
+                    'customer'        => 'cus_refund_fb',
+                    'refunded'        => true,
+                    'amount'          => 125,
+                    'amount_refunded' => 125,
+                ],
+            ],
+        ];
+
+        $this->webhook($event)->assertStatus(200);
+
+        $payment->refresh();
+        $this->assertEquals('refunded', $payment->status);
+
+        // Abonnement encore actif (versement planifié restant) → commande reste 'partial'
+        $order->refresh();
+        $this->assertEquals('partial', $order->status);
+    }
+
+    /** @test */
     public function test_charge_refunded_partial_is_ignored(): void
     {
         [$program, $class] = $this->makeProgram();

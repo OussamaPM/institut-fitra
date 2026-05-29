@@ -592,8 +592,11 @@ class StripeService
 
             $order = $payment->order;
             if ($order) {
-                // Plus aucun paiement encaissé → la commande passe en "remboursée"
-                if ($order->payments()->where('status', 'succeeded')->count() === 0) {
+                // Commande "remboursée" seulement si plus rien n'est encaissé NI planifié
+                // (un remboursement isolé sur un abonnement actif ne change pas le statut)
+                $hasSucceeded = $order->payments()->where('status', 'succeeded')->exists();
+                $hasScheduled = $order->payments()->where('status', 'scheduled')->exists();
+                if (! $hasSucceeded && ! $hasScheduled) {
                     $order->update(['status' => 'refunded']);
                 }
 
@@ -637,37 +640,22 @@ class StripeService
             return $payment;
         }
 
-        // 2. Fallback : remonter via la facture → abonnement → commande
-        try {
-            $invoiceId = $charge->invoice ?? null;
-            if (! $invoiceId && $paymentIntentId) {
-                $invoiceId = \Stripe\PaymentIntent::retrieve($paymentIntentId)->invoice ?? null;
-            }
-            if (! $invoiceId) {
-                return null;
-            }
-
-            $subscriptionId = \Stripe\Invoice::retrieve($invoiceId)->subscription ?? null;
-            if (! $subscriptionId) {
-                return null;
-            }
-
-            $order = Order::where('stripe_subscription_id', $subscriptionId)->first();
-            if (! $order) {
-                return null;
-            }
-
-            // Premier versement encaissé non encore remboursé
-            return $order->payments()
-                ->where('status', 'succeeded')
-                ->orderBy('installment_number')
-                ->lockForUpdate()
-                ->first();
-        } catch (\Exception $e) {
-            Log::error('charge.refunded fallback Stripe: '.$e->getMessage());
-
+        // 2. Fallback indépendant de la version API Stripe : client + montant.
+        // Couvre le 1er versement d'un abonnement dont le payment_intent n'est pas
+        // stocké (les champs invoice.subscription / payment_intent.invoice ont été
+        // retirés des versions récentes de l'API, on ne s'y fie donc pas).
+        $customerId = $charge->customer ?? null;
+        $amountCents = (int) ($charge->amount ?? 0);
+        if (! $customerId || $amountCents <= 0) {
             return null;
         }
+
+        return OrderPayment::where('status', 'succeeded')
+            ->whereRaw('ROUND(amount * 100) = ?', [$amountCents])
+            ->whereHas('order', fn ($q) => $q->where('stripe_customer_id', $customerId))
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->first();
     }
 
     /**
