@@ -198,12 +198,10 @@ class OrderTest extends TestCase
         $program = Program::factory()->create(['created_by' => $teacher->id]);
         $class = ClassModel::factory()->create(['program_id' => $program->id]);
 
-        // Set default class
-        $program->update(['default_class_id' => $class->id]);
-
         $response = $this->actingAs($admin)
             ->postJson('/api/admin/orders/manual', [
                 'program_id' => $program->id,
+                'class_id' => $class->id,
                 'customer_email' => 'new.student@test.com',
                 'customer_first_name' => 'New',
                 'customer_last_name' => 'Student',
@@ -234,20 +232,18 @@ class OrderTest extends TestCase
     }
 
     /**
-     * Test manual order requires default class.
+     * Test manual order requires class_id (la classe doit être sélectionnée explicitement).
      */
-    public function test_manual_order_requires_default_class(): void
+    public function test_manual_order_requires_class_id(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $teacher = User::factory()->create(['role' => 'teacher']);
-        $program = Program::factory()->create([
-            'created_by' => $teacher->id,
-            'default_class_id' => null,
-        ]);
+        $program = Program::factory()->create(['created_by' => $teacher->id]);
 
         $response = $this->actingAs($admin)
             ->postJson('/api/admin/orders/manual', [
                 'program_id' => $program->id,
+                // class_id volontairement omis
                 'customer_email' => 'new.student@test.com',
                 'customer_first_name' => 'New',
                 'customer_last_name' => 'Student',
@@ -256,9 +252,7 @@ class OrderTest extends TestCase
             ]);
 
         $response->assertStatus(422)
-            ->assertJson([
-                'message' => 'Ce programme n\'a pas de classe par défaut configurée.',
-            ]);
+            ->assertJsonValidationErrors(['class_id']);
     }
 
     /**
@@ -270,12 +264,12 @@ class OrderTest extends TestCase
         $teacher = User::factory()->create(['role' => 'teacher']);
         $program = Program::factory()->create(['created_by' => $teacher->id]);
         $class = ClassModel::factory()->create(['program_id' => $program->id]);
-        $program->update(['default_class_id' => $class->id]);
 
         // First enrollment
         $this->actingAs($admin)
             ->postJson('/api/admin/orders/manual', [
                 'program_id' => $program->id,
+                'class_id' => $class->id,
                 'customer_email' => 'student@test.com',
                 'customer_first_name' => 'Test',
                 'customer_last_name' => 'Student',
@@ -287,6 +281,7 @@ class OrderTest extends TestCase
         $response = $this->actingAs($admin)
             ->postJson('/api/admin/orders/manual', [
                 'program_id' => $program->id,
+                'class_id' => $class->id,
                 'customer_email' => 'student@test.com',
                 'customer_first_name' => 'Test',
                 'customer_last_name' => 'Student',

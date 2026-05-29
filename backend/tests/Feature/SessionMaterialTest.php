@@ -23,6 +23,7 @@ class SessionMaterialTest extends TestCase
     {
         parent::setUp();
         Storage::fake('public');
+        Storage::fake('spaces');
     }
 
     /**
