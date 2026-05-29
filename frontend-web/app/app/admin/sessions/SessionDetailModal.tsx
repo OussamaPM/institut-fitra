@@ -354,7 +354,14 @@ export default function SessionDetailModal({
               <h2 className="text-2xl font-playfair font-semibold text-secondary">
                 {session.title}
               </h2>
-              <div className="mt-2">{getStatusBadge(session.status)}</div>
+              <div className="mt-2 flex items-center gap-2">
+                {getStatusBadge(session.status)}
+                {session.level_number && (
+                  <span className="px-2.5 py-1 text-xs rounded-full bg-primary/10 text-primary font-medium">
+                    Niveau {session.level_number}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

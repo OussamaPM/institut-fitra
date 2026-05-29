@@ -105,6 +105,11 @@ function SessionDetailModal({ session, onClose }: SessionDetailModalProps) {
             <span className={`px-3 py-1 text-sm rounded-full ${status.color}`}>
               {status.text}
             </span>
+            {session.level_number && (
+              <span className="px-3 py-1 text-sm rounded-full bg-primary/10 text-primary font-medium">
+                Niveau {session.level_number}
+              </span>
+            )}
           </div>
 
           {/* Date & Time */}
@@ -411,11 +416,12 @@ export default function StudentPlanning() {
     return { ...(classColorMap[session.class_id] || CLASS_COLORS[0]), custom: undefined as string | undefined };
   }, [classColorMap]);
 
-  // Obtenir le titre à afficher (titre custom > nom de classe)
+  // Obtenir le titre à afficher (titre custom > nom de classe), préfixé du niveau si > 1
   const getSessionDisplayTitle = useCallback((session: Session) => {
-    return session.title && session.title !== `Session automatique de ${session.class?.program?.name || ''}`
+    const base = session.title && session.title !== `Session automatique de ${session.class?.program?.name || ''}`
       ? session.title
       : session.class?.name || session.title;
+    return session.level_number && session.level_number > 1 ? `N${session.level_number} · ${base}` : base;
   }, []);
 
   // Obtenir la couleur simple pour les statuts (utilisée dans la liste)

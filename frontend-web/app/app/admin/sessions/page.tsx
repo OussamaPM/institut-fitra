@@ -232,11 +232,12 @@ export default function SessionsPage() {
     return { ...(classColorMap[session.class_id] || CLASS_COLORS[0]), custom: undefined as string | undefined };
   };
 
-  // Obtenir le titre à afficher (titre custom > nom de classe)
+  // Obtenir le titre à afficher (titre custom > nom de classe), préfixé du niveau si > 1
   const getSessionDisplayTitle = (session: Session) => {
-    return session.title && session.title !== `Session automatique de ${session.class?.program?.name || ''}`
+    const base = session.title && session.title !== `Session automatique de ${session.class?.program?.name || ''}`
       ? session.title
       : session.class?.name || session.title;
+    return session.level_number && session.level_number > 1 ? `N${session.level_number} · ${base}` : base;
   };
 
   // Générer les jours du mois

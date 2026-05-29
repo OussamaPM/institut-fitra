@@ -21,7 +21,7 @@ class SessionController extends Controller
         try {
             $user = $request->user();
 
-            $query = Session::with(['class.program', 'teacher']);
+            $query = Session::with(['class.program', 'teacher', 'programLevel:id,level_number,name']);
 
             // Filter based on user role
             if ($user->role === 'student') {

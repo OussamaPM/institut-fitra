@@ -41,7 +41,20 @@ class Session extends Model
     protected $appends = [
         'replay_valid',
         'replay_expires_at',
+        'level_number',
     ];
+
+    /**
+     * Numéro de niveau de la session (null = niveau 1 / programme de base).
+     */
+    public function getLevelNumberAttribute(): int
+    {
+        if (! $this->program_level_id) {
+            return 1;
+        }
+
+        return (int) ($this->programLevel?->level_number ?? 1);
+    }
 
     /**
      * Check if replay is still valid (not expired)
@@ -70,6 +83,11 @@ class Session extends Model
     public function class(): BelongsTo
     {
         return $this->belongsTo(ClassModel::class, 'class_id');
+    }
+
+    public function programLevel(): BelongsTo
+    {
+        return $this->belongsTo(ProgramLevel::class);
     }
 
     public function teacher(): BelongsTo

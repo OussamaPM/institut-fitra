@@ -184,6 +184,8 @@ export interface Session {
   duration_minutes: number;
   status: SessionStatus;
   color?: string | null;
+  program_level_id?: number | null;
+  level_number?: number;
   // Replay fields
   replay_url?: string;
   replay_validity_days?: number;
