@@ -78,7 +78,7 @@ const ordersApi = {
   // Get statistics
   getStats: async (): Promise<OrderStats> => {
     const response = await apiClient.get('/admin/orders/stats');
-    return response.data;
+    return response.data.stats;
   },
 };
 

@@ -326,7 +326,8 @@ class OrderController extends Controller
                 'total_orders' => Order::count(),
                 'paid_orders' => Order::where('status', 'paid')->count(),
                 'pending_orders' => Order::where('status', 'partial')->count(),
-                'total_revenue' => OrderPayment::where('status', 'succeeded')->sum('amount'),
+                'total_revenue' => (float) OrderPayment::where('status', 'succeeded')->sum('amount'),
+                'pending_revenue' => (float) OrderPayment::where('status', 'scheduled')->sum('amount'),
                 'orders_by_payment_method' => [
                     'stripe' => Order::where('payment_method', 'stripe')->count(),
                     'paypal' => Order::where('payment_method', 'paypal')->count(),
