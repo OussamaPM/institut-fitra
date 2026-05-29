@@ -2,12 +2,14 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { sessionsApi, enrollmentsApi } from '@/lib/api';
 import materialsApi from '@/lib/api/materials';
-import { Session, Enrollment, SessionMaterial } from '@/lib/types';
+import quizzesApi from '@/lib/api/quizzes';
+import { Session, Enrollment, SessionMaterial, Quiz } from '@/lib/types';
 import { format, parseISO, isAfter, isBefore, addHours, addMinutes, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, startOfWeek, endOfWeek, isToday } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { FileText, Image as ImageIcon, Download, Loader2, Play, X, ChevronLeft, ChevronRight, Calendar, List, Video } from 'lucide-react';
+import { FileText, Image as ImageIcon, Download, Loader2, Play, X, ChevronLeft, ChevronRight, Calendar, List, Video, HelpCircle } from 'lucide-react';
 
 // Couleurs par classe (rotation)
 const CLASS_COLORS = [
@@ -23,10 +25,11 @@ const CLASS_COLORS = [
 
 interface SessionDetailModalProps {
   session: Session | null;
+  quiz?: Quiz | null;
   onClose: () => void;
 }
 
-function SessionDetailModal({ session, onClose }: SessionDetailModalProps) {
+function SessionDetailModal({ session, quiz, onClose }: SessionDetailModalProps) {
   const [materials, setMaterials] = useState<SessionMaterial[]>([]);
   const [loadingMaterials, setLoadingMaterials] = useState(false);
   const [showReplayPlayer, setShowReplayPlayer] = useState(false);
@@ -237,6 +240,42 @@ function SessionDetailModal({ session, onClose }: SessionDetailModalProps) {
             )}
           </div>
 
+          {/* Quiz */}
+          {quiz && (
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Quiz</h3>
+              <Link
+                href={quiz.submitted ? `/app/student/quiz/${quiz.id}/review` : `/app/student/quiz/${quiz.id}`}
+                className={`flex items-center justify-between gap-3 p-3 md:p-4 rounded-lg border transition-colors ${
+                  quiz.submitted
+                    ? 'bg-green-50 border-green-200 hover:bg-green-100'
+                    : 'bg-orange-50 border-orange-200 hover:bg-orange-100'
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`p-2 rounded-lg flex-shrink-0 ${quiz.submitted ? 'bg-green-100' : 'bg-orange-100'}`}>
+                    <HelpCircle size={18} className={quiz.submitted ? 'text-green-600' : 'text-orange-600'} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`font-medium text-sm truncate ${quiz.submitted ? 'text-green-900' : 'text-orange-900'}`}>
+                      {quiz.title}
+                    </p>
+                    <p className={`text-xs ${quiz.submitted ? 'text-green-700' : 'text-orange-700'}`}>
+                      {quiz.submitted ? 'Déjà complété · voir le résultat' : 'Cliquez pour commencer'}
+                    </p>
+                  </div>
+                </div>
+                <span
+                  className={`px-3 py-2 rounded-lg text-sm font-medium flex-shrink-0 ${
+                    quiz.submitted ? 'bg-green-600 text-white' : 'bg-orange-600 text-white'
+                  }`}
+                >
+                  {quiz.submitted ? 'Résultat' : 'Commencer'}
+                </span>
+              </Link>
+            </div>
+          )}
+
           {/* Section Replay */}
           {session.replay_url && session.replay_valid && (
             <div>
@@ -325,6 +364,7 @@ export default function StudentPlanning() {
   const searchParams = useSearchParams();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -342,6 +382,26 @@ export default function StudentPlanning() {
     });
     return map;
   }, [enrollments]);
+
+  // Index des quiz : par session_id ET par class_id-scheduled_at (les sessions
+  // affichées sont dédupliquées, l'ID retenu peut différer de celui du quiz)
+  const quizMaps = useMemo(() => {
+    const byId: Record<number, Quiz> = {};
+    const byKey: Record<string, Quiz> = {};
+    quizzes.forEach((q) => {
+      byId[q.session_id] = q;
+      if (q.session?.scheduled_at) {
+        byKey[`${q.class_id}-${q.session.scheduled_at}`] = q;
+      }
+    });
+    return { byId, byKey };
+  }, [quizzes]);
+
+  const getQuizForSession = useCallback(
+    (session: Session): Quiz | undefined =>
+      quizMaps.byId[session.id] ?? quizMaps.byKey[`${session.class_id}-${session.scheduled_at}`],
+    [quizMaps]
+  );
 
   // Detecter si on est sur mobile pour le mode par defaut
   useEffect(() => {
@@ -369,13 +429,15 @@ export default function StudentPlanning() {
       setIsLoading(true);
       setError('');
 
-      const [enrollmentsData, sessionsData] = await Promise.all([
+      const [enrollmentsData, sessionsData, quizzesData] = await Promise.all([
         enrollmentsApi.getMyEnrollments(),
-        sessionsApi.getAll({ per_page: 500 })
+        sessionsApi.getAll({ per_page: 500 }),
+        quizzesApi.getStudentQuizzes().catch(() => [] as Quiz[]),
       ]);
 
       setEnrollments(enrollmentsData.filter(e => e.status === 'active'));
       setSessions(sessionsData.data || []);
+      setQuizzes(quizzesData);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors du chargement des donnees';
       setError(errorMessage);
@@ -535,6 +597,7 @@ export default function StudentPlanning() {
                     {daySessions.slice(0, 3).map(session => {
                       const colors = getSessionColor(session);
                       const hasZoom = session.class?.zoom_link;
+                      const sessionQuiz = getQuizForSession(session);
                       return (
                         <button
                           key={session.id}
@@ -556,6 +619,9 @@ export default function StudentPlanning() {
                           >
                             {getSessionDisplayTitle(session)}
                           </span>
+                          {sessionQuiz && (
+                            <HelpCircle size={12} className={`flex-shrink-0 ${sessionQuiz.submitted ? 'text-green-500' : 'text-orange-500'}`} />
+                          )}
                           {hasZoom && (
                             <Video size={12} className="text-blue-500 flex-shrink-0" />
                           )}
@@ -711,6 +777,7 @@ export default function StudentPlanning() {
 
                     const colors = getSessionColor(session);
                     const hasZoom = session.class?.zoom_link;
+                    const sessionQuiz = getQuizForSession(session);
                     const sessionEnd = addMinutes(sessionStart, session.duration_minutes);
 
                     return (
@@ -733,6 +800,7 @@ export default function StudentPlanning() {
                           <span className="text-[8px] md:text-[9px] font-bold text-slate-500">
                             {format(sessionStart, 'HH:mm')}-{format(sessionEnd, 'HH:mm')}
                           </span>
+                          {sessionQuiz && <HelpCircle size={9} className={`${sessionQuiz.submitted ? 'text-green-500' : 'text-orange-500'} hidden md:block`} />}
                           {hasZoom && <Video size={9} className="text-blue-500 hidden md:block" />}
                         </div>
                         <span
@@ -786,6 +854,7 @@ export default function StudentPlanning() {
                 const colors = getSessionColor(session);
                 // Utiliser le lien Zoom de la classe en priorité
                 const sessionZoomLink = session.class?.zoom_link;
+                const sessionQuiz = getQuizForSession(session);
                 const canJoin = sessionZoomLink &&
                   isAfter(now, addHours(sessionStart, -0.25)) &&
                   isBefore(now, sessionEnd);
@@ -817,6 +886,12 @@ export default function StudentPlanning() {
                           </h3>
                           {sessionZoomLink && (
                             <Video size={14} className="text-blue-500 flex-shrink-0" />
+                          )}
+                          {sessionQuiz && (
+                            <HelpCircle
+                              size={14}
+                              className={`flex-shrink-0 ${sessionQuiz.submitted ? 'text-green-500' : 'text-orange-500'}`}
+                            />
                           )}
                         </div>
                         <p className="text-xs md:text-sm text-slate-500 ml-5 md:ml-6 mt-0.5 md:mt-1 truncate">
@@ -995,6 +1070,7 @@ export default function StudentPlanning() {
       {/* Session Detail Modal */}
       <SessionDetailModal
         session={selectedSession}
+        quiz={selectedSession ? getQuizForSession(selectedSession) : null}
         onClose={() => setSelectedSession(null)}
       />
     </div>
