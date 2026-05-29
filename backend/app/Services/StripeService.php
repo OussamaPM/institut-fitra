@@ -287,6 +287,10 @@ class StripeService
                 case 'payment_intent.payment_failed':
                     return $this->handlePaymentFailed($event->data->object);
 
+                    // Remboursement effectué dans Stripe
+                case 'charge.refunded':
+                    return $this->handleChargeRefunded($event->data->object);
+
                     // === WEBHOOKS ABONNEMENT ===
 
                     // Facture payée (chaque paiement mensuel)
@@ -555,6 +559,70 @@ class StripeService
     }
 
     /**
+     * Gérer un remboursement effectué dans Stripe (charge.refunded).
+     * Marque le paiement correspondant comme remboursé et met à jour la commande.
+     */
+    private function handleChargeRefunded($charge): array
+    {
+        // Remboursement partiel : le paiement reste encaissé, on ne change pas le statut
+        if (! ($charge->refunded ?? false)) {
+            Log::info("charge.refunded partiel ignoré pour charge {$charge->id}");
+
+            return ['success' => true, 'message' => 'Remboursement partiel ignoré'];
+        }
+
+        $paymentIntentId = $charge->payment_intent ?? null;
+
+        return DB::transaction(function () use ($charge, $paymentIntentId) {
+            $payment = OrderPayment::where(function ($q) use ($charge, $paymentIntentId): void {
+                if ($paymentIntentId) {
+                    $q->where('stripe_payment_intent_id', $paymentIntentId);
+                }
+                $q->orWhere('stripe_charge_id', $charge->id);
+            })->lockForUpdate()->first();
+
+            if (! $payment) {
+                Log::warning("charge.refunded: paiement introuvable (payment_intent={$paymentIntentId}, charge={$charge->id})");
+
+                return ['success' => true, 'message' => 'Paiement introuvable'];
+            }
+
+            // Idempotence
+            if ($payment->status === 'refunded') {
+                return ['success' => true, 'message' => 'Déjà remboursé'];
+            }
+
+            $payment->update([
+                'status' => 'refunded',
+                'stripe_charge_id' => $payment->stripe_charge_id ?? $charge->id,
+            ]);
+
+            $order = $payment->order;
+            if ($order) {
+                // Plus aucun paiement encaissé → la commande passe en "remboursée"
+                if ($order->payments()->where('status', 'succeeded')->count() === 0) {
+                    $order->update(['status' => 'refunded']);
+                }
+
+                if ($order->student_id) {
+                    Notification::create([
+                        'user_id' => $order->student_id,
+                        'type' => 'payment',
+                        'category' => 'payment_refunded',
+                        'title' => 'Paiement remboursé',
+                        'message' => "Un paiement de {$payment->amount}€ a été remboursé.",
+                        'action_url' => '/student/profile',
+                    ]);
+                }
+            }
+
+            Log::info("charge.refunded traité: payment #{$payment->id} (order #".($order?->id ?? 'n/a').')');
+
+            return ['success' => true, 'message' => 'Remboursement traité'];
+        });
+    }
+
+    /**
      * Traiter un paiement échoué
      */
     private function handlePaymentFailed($paymentIntent): array
@@ -598,7 +666,20 @@ class StripeService
         // Ignorer la première facture (billing_reason = subscription_create)
         // Elle est déjà gérée dans handleCheckoutCompleted qui marque paiement 1 comme succeeded
         if ($invoice->billing_reason === 'subscription_create') {
-            Log::info("Invoice paid: première facture ignorée (subscription_create) pour subscription {$invoice->subscription}");
+            // La 1ère facture est déjà gérée au checkout, mais on stocke ses identifiants
+            // Stripe sur le 1er versement pour pouvoir rattacher un éventuel remboursement.
+            if ($invoice->payment_intent) {
+                $firstOrder = Order::where('stripe_subscription_id', $invoice->subscription)->first();
+                $firstOrder?->payments()
+                    ->where('installment_number', 1)
+                    ->whereNull('stripe_payment_intent_id')
+                    ->update([
+                        'stripe_invoice_id' => $invoice->id,
+                        'stripe_payment_intent_id' => $invoice->payment_intent,
+                    ]);
+            }
+
+            Log::info("Invoice paid: première facture (subscription_create) pour subscription {$invoice->subscription}");
 
             return ['success' => true, 'message' => 'Première facture, déjà gérée dans checkout'];
         }

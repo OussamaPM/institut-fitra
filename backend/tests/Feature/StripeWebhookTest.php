@@ -1082,4 +1082,104 @@ class StripeWebhookTest extends TestCase
 
         $this->webhook($event)->assertStatus(200);
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // CHARGE.REFUNDED — remboursement
+    // ─────────────────────────────────────────────────────────────
+
+    /** @test */
+    public function test_charge_refunded_marks_payment_and_order_refunded(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        [$program, $class] = $this->makeProgram();
+
+        $order = Order::factory()->create([
+            'student_id'         => $student->id,
+            'program_id'         => $program->id,
+            'class_id'           => $class->id,
+            'status'             => 'paid',
+            'installments_count' => 1,
+            'payment_method'     => 'stripe',
+        ]);
+
+        $payment = OrderPayment::create([
+            'order_id'                 => $order->id,
+            'amount'                   => 100,
+            'installment_number'       => 1,
+            'status'                   => 'succeeded',
+            'paid_at'                  => now(),
+            'stripe_payment_intent_id' => 'pi_refund_test',
+            'is_recovery_payment'      => false,
+        ]);
+
+        $event = [
+            'type' => 'charge.refunded',
+            'data' => [
+                'object' => [
+                    'id'              => 'ch_refund_test',
+                    'payment_intent'  => 'pi_refund_test',
+                    'refunded'        => true,
+                    'amount'          => 10000,
+                    'amount_refunded' => 10000,
+                ],
+            ],
+        ];
+
+        $this->webhook($event)->assertStatus(200);
+
+        $payment->refresh();
+        $this->assertEquals('refunded', $payment->status);
+
+        $order->refresh();
+        $this->assertEquals('refunded', $order->status);
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id'  => $student->id,
+            'type'     => 'payment',
+            'category' => 'payment_refunded',
+        ]);
+    }
+
+    /** @test */
+    public function test_charge_refunded_partial_is_ignored(): void
+    {
+        [$program, $class] = $this->makeProgram();
+
+        $order = Order::factory()->create([
+            'program_id'         => $program->id,
+            'class_id'           => $class->id,
+            'status'             => 'paid',
+            'installments_count' => 1,
+            'payment_method'     => 'stripe',
+        ]);
+
+        $payment = OrderPayment::create([
+            'order_id'                 => $order->id,
+            'amount'                   => 100,
+            'installment_number'       => 1,
+            'status'                   => 'succeeded',
+            'paid_at'                  => now(),
+            'stripe_payment_intent_id' => 'pi_partial_refund',
+            'is_recovery_payment'      => false,
+        ]);
+
+        $event = [
+            'type' => 'charge.refunded',
+            'data' => [
+                'object' => [
+                    'id'              => 'ch_partial',
+                    'payment_intent'  => 'pi_partial_refund',
+                    'refunded'        => false,
+                    'amount'          => 10000,
+                    'amount_refunded' => 4000,
+                ],
+            ],
+        ];
+
+        $this->webhook($event)->assertStatus(200);
+
+        // Remboursement partiel : le paiement reste encaissé
+        $payment->refresh();
+        $this->assertEquals('succeeded', $payment->status);
+    }
 }
