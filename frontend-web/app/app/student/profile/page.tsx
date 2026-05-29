@@ -403,9 +403,18 @@ export default function StudentProfile() {
                                 {entry.level_number}
                               </span>
                               <div className="min-w-0 flex-1">
-                                <p className="text-xs font-medium text-secondary truncate">
-                                  {entry.level?.name || `Niveau ${entry.level_number}`}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-xs font-medium text-secondary truncate">
+                                    {entry.level?.name || `Niveau ${entry.level_number}`}
+                                  </p>
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                                    entry.status === 'paid'
+                                      ? 'bg-green-100 text-green-700'
+                                      : 'bg-amber-100 text-amber-700'
+                                  }`}>
+                                    {entry.status === 'paid' ? 'Payé' : 'En cours de paiement'}
+                                  </span>
+                                </div>
                                 {entry.class && (
                                   <p className="text-xs text-gray-500 truncate">{entry.class.name}</p>
                                 )}

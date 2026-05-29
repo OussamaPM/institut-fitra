@@ -10,12 +10,16 @@ class ProgramLevelActivation extends Model
     protected $fillable = [
         'program_level_id',
         'class_id',
+        'start_date',
+        'end_date',
         'activated_by',
         'activated_at',
     ];
 
     protected $casts = [
         'activated_at' => 'datetime',
+        'start_date' => 'date',
+        'end_date' => 'date',
     ];
 
     public function programLevel(): BelongsTo

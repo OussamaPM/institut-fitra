@@ -83,7 +83,7 @@ Program (template)
 | `teacher_profiles` | user_id, phone, specialization, bio, gender, profile_photo |
 | `programs` | name, description, teacher_id, schedule (JSON), price, max_installments, default_class_id |
 | `classes` | program_id, name, academic_year, start_date, end_date, max_students, status, zoom_link, **parent_class_id** |
-| `class_sessions` | class_id, teacher_id, title, scheduled_at, duration_minutes, status, replay_url, replay_validity_days, replay_added_at, color |
+| `class_sessions` | class_id, **program_level_id** (nullable — null = niveau 1/base), teacher_id, title, scheduled_at, duration_minutes, status, replay_url, replay_validity_days, replay_added_at, color |
 | `enrollments` | student_id, class_id, status, enrolled_at |
 | `attendances` | session_id, student_id, attended, duration_minutes |
 | `session_materials` | session_id, title, file_path, file_type |
@@ -94,7 +94,7 @@ Program (template)
 | `orders` | student_id, program_id, class_id, customer_email, total_amount, installments_count, payment_method, status, stripe_checkout_session_id, level_number, program_level_id |
 | `order_payments` | order_id, amount, installment_number, status, scheduled_at, paid_at, stripe_payment_intent_id, recovery_for_payment_id, is_recovery_payment |
 | `program_levels` | program_id, level_number (≥2), name, description, price, max_installments, schedule (JSON), teacher_id |
-| `program_level_activations` | program_level_id, class_id, activated_by, activated_at |
+| `program_level_activations` | program_level_id, class_id, **start_date, end_date**, activated_by, activated_at |
 | `settings` | key, value (dont stripe_secret_key, stripe_webhook_secret) |
 
 **Format schedule** : `[{"day": "lundi", "start_time": "10:00", "end_time": "12:00"}]`
@@ -117,7 +117,7 @@ GET              /api/programs/teachers
 
 GET/POST         /api/programs/{program}/levels
 GET/PUT/DELETE   /api/programs/{program}/levels/{level}
-POST             /api/programs/{program}/levels/{level}/activate    # body: class_ids[]
+POST             /api/programs/{program}/levels/{level}/activate    # body: class_id, start_date, end_date (génère les sessions)
 POST             /api/programs/{program}/levels/{level}/deactivate  # body: class_id (optionnel)
 ```
 
@@ -201,8 +201,9 @@ POST  /api/student/tracking/{id}/submit
 ## 6. Comportements Importants
 
 ### Sessions — génération automatique
-- Création ou modification des dates d'une classe → `SessionGeneratorService` génère les sessions récurrentes selon le `schedule` du programme
-- Modification dates → **supprime TOUTES les sessions existantes** puis régénère
+- **Niveau 1 (base)** : création/modification des dates d'une classe → `generateSessionsForClass` génère les sessions selon le `schedule` du **programme** entre les dates de la classe (`program_level_id = null`)
+- **Niveaux 2+** : à l'activation d'un niveau pour une classe (avec dates) → `generateSessionsForLevelActivation` génère les sessions selon le `schedule` **du niveau** entre les dates de l'activation (`program_level_id = level->id`)
+- Régénération du niveau de base (`deleteAllSessions`/`regenerate`) est **scopée à `program_level_id = null`** → éditer les dates d'une classe **n'efface pas** les sessions des niveaux supérieurs
 - `SessionController::index()` accepte `per_page` (défaut 15 ; frontend planning utilise `per_page: 500`)
 
 ### Replays vidéo
@@ -214,7 +215,13 @@ POST  /api/student/tracking/{id}/submit
 ### Niveaux multi-classes (`program_level_activations`)
 - `is_active` et `default_class_id` supprimés de `program_levels`
 - Un niveau peut être actif sur plusieurs classes simultanément
-- Activation → emails aux élèves N-1 de chaque classe ciblée
+- **Activation = une classe à la fois + `start_date`/`end_date`** : crée l'activation (updateOrCreate, re-activation = met à jour les dates) et **génère les sessions du niveau** sur la période ; refus si le niveau n'a pas d'emploi du temps
+- Désactivation d'un niveau → supprime aussi les sessions générées de ce niveau pour les classes concernées
+- Activation (première fois) → emails aux élèves N-1 de la classe ciblée
+
+### Niveau actuel & réinscription (`ProgramLevelService`)
+- `getStudentCurrentLevel` / `getAvailableReinscriptions` / `getStudentLevelsHistory` comptent les commandes **`paid` ET `partial`** : l'élève est considéré inscrit dès le 1er versement (paiement en plusieurs fois inclus) → le bouton "S'inscrire" du niveau disparaît et le niveau apparaît dans l'historique (avec badge Payé / En cours de paiement)
+- `GET /student/reinscription/levels/{level}` : endpoint élève (lecture seule) pour charger un niveau lors de la réinscription, limité aux niveaux activés (la route admin `GET /programs/{program}/levels/{level}` reste réservée `role:teacher`)
 
 ### Hiérarchie des classes
 - `parent_class_id` sur `classes` pour relier les promotions entre elles

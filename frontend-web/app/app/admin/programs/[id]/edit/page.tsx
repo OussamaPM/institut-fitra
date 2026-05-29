@@ -57,7 +57,9 @@ export default function EditProgramPage() {
 
   // États pour l'activation des niveaux
   const [activatingLevelId, setActivatingLevelId] = useState<number | null>(null);
-  const [selectedClassIds, setSelectedClassIds] = useState<number[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
+  const [activateStartDate, setActivateStartDate] = useState('');
+  const [activateEndDate, setActivateEndDate] = useState('');
   const [confirmActivation, setConfirmActivation] = useState<{ count: number; levelId: number } | null>(null);
 
   // Charger les données du programme, les enseignants et les niveaux
@@ -417,12 +419,14 @@ export default function EditProgramPage() {
 
   // Activer un niveau pour les classes sélectionnées
   const handleActivate = async (levelId: number, confirmed = false) => {
-    if (selectedClassIds.length === 0) return;
+    if (selectedClassId === null || !activateStartDate || !activateEndDate) return;
     setActivatingLevelId(levelId);
     setLevelError('');
     try {
       const result = await programLevelsApi.activate(programId, levelId, {
-        class_ids: selectedClassIds,
+        class_id: selectedClassId,
+        start_date: activateStartDate,
+        end_date: activateEndDate,
         confirmed,
       });
       if (result.requires_confirmation && result.eligible_students_count) {
@@ -439,7 +443,9 @@ export default function EditProgramPage() {
           setLevelForms(newForms);
         }
       }
-      setSelectedClassIds([]);
+      setSelectedClassId(null);
+      setActivateStartDate('');
+      setActivateEndDate('');
       setConfirmActivation(null);
     } catch (err: any) {
       setLevelError(err.response?.data?.message || 'Impossible d\'activer le niveau.');
@@ -1046,38 +1052,54 @@ export default function EditProgramPage() {
                             <p className="text-xs text-amber-600 mb-3">Aucune classe active — les élèves ne peuvent pas se réinscrire.</p>
                           )}
 
-                          {/* Sélection de nouvelles classes */}
+                          {/* Activer pour une classe + période */}
                           {program?.classes && program.classes.length > 0 && (
                             <div>
-                              <p className="text-xs text-gray-500 mb-2">Activer pour d'autres classes :</p>
+                              <p className="text-xs text-gray-500 mb-2">Activer pour une classe :</p>
                               <div className="space-y-1 mb-3 max-h-32 overflow-y-auto">
                                 {program.classes
                                   .filter((cls: ClassModel) => !form.activations?.some(a => a.class_id === cls.id))
                                   .map((cls: ClassModel) => (
                                     <label key={cls.id} className="flex items-center gap-2 cursor-pointer p-1.5 hover:bg-white rounded">
                                       <input
-                                        type="checkbox"
-                                        checked={selectedClassIds.includes(cls.id)}
-                                        onChange={(e) => {
-                                          if (e.target.checked) {
-                                            setSelectedClassIds([...selectedClassIds, cls.id]);
-                                          } else {
-                                            setSelectedClassIds(selectedClassIds.filter(id => id !== cls.id));
-                                          }
-                                        }}
+                                        type="radio"
+                                        name={`activate-class-${levelId}`}
+                                        checked={selectedClassId === cls.id}
+                                        onChange={() => setSelectedClassId(cls.id)}
                                         className="w-4 h-4 text-primary"
                                       />
                                       <span className="text-sm text-secondary">{cls.name} ({cls.academic_year})</span>
                                     </label>
                                   ))}
                               </div>
+                              <div className="grid grid-cols-2 gap-2 mb-3">
+                                <div>
+                                  <label className="block text-xs text-gray-500 mb-1">Date de début</label>
+                                  <input
+                                    type="date"
+                                    value={activateStartDate}
+                                    onChange={(e) => setActivateStartDate(e.target.value)}
+                                    className="input w-full text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-gray-500 mb-1">Date de fin</label>
+                                  <input
+                                    type="date"
+                                    value={activateEndDate}
+                                    min={activateStartDate || undefined}
+                                    onChange={(e) => setActivateEndDate(e.target.value)}
+                                    className="input w-full text-sm"
+                                  />
+                                </div>
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => handleActivate(levelId)}
-                                disabled={selectedClassIds.length === 0 || activatingLevelId === levelId}
+                                disabled={selectedClassId === null || !activateStartDate || !activateEndDate || activateEndDate <= activateStartDate || activatingLevelId === levelId}
                                 className="w-full py-2 px-3 bg-primary text-white text-sm rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                {activatingLevelId === levelId ? 'Activation...' : `Activer pour ${selectedClassIds.length} classe(s)`}
+                                {activatingLevelId === levelId ? 'Activation...' : 'Activer & générer les sessions'}
                               </button>
                             </div>
                           )}
@@ -1093,7 +1115,7 @@ export default function EditProgramPage() {
                           <div className="flex gap-2">
                             <button
                               type="button"
-                              onClick={() => { setConfirmActivation(null); setSelectedClassIds([]); }}
+                              onClick={() => { setConfirmActivation(null); setSelectedClassId(null); setActivateStartDate(''); setActivateEndDate(''); }}
                               className="flex-1 py-1.5 px-3 border border-gray-300 text-sm rounded hover:bg-gray-100"
                             >
                               Annuler

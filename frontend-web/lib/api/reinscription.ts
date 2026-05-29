@@ -19,6 +19,7 @@ export interface LevelsHistory {
       academic_year: string;
     };
     amount: number;
+    status: string;
     paid_at: string;
   }[];
 }

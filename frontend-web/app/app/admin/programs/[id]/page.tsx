@@ -21,7 +21,9 @@ export default function ProgramDetailsPage() {
 
   // Modal d'activation
   const [activateModal, setActivateModal] = useState<{ level: ProgramLevel } | null>(null);
-  const [selectedClassIds, setSelectedClassIds] = useState<number[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
+  const [activateStartDate, setActivateStartDate] = useState('');
+  const [activateEndDate, setActivateEndDate] = useState('');
   const [activateLoading, setActivateLoading] = useState(false);
   const [activateConfirm, setActivateConfirm] = useState<{ count: number } | null>(null);
 
@@ -47,30 +49,33 @@ export default function ProgramDetailsPage() {
 
   const openActivateModal = (level: ProgramLevel) => {
     setActivateModal({ level });
-    setSelectedClassIds([]);
+    setSelectedClassId(null);
+    setActivateStartDate('');
+    setActivateEndDate('');
     setActivateConfirm(null);
   };
 
   const closeActivateModal = () => {
     setActivateModal(null);
-    setSelectedClassIds([]);
+    setSelectedClassId(null);
+    setActivateStartDate('');
+    setActivateEndDate('');
     setActivateConfirm(null);
   };
 
-  const toggleClassSelection = (classId: number) => {
-    setSelectedClassIds(prev =>
-      prev.includes(classId) ? prev.filter(id => id !== classId) : [...prev, classId]
-    );
-  };
+  const canSubmitActivation = selectedClassId !== null && !!activateStartDate && !!activateEndDate
+    && activateEndDate > activateStartDate;
 
   const handleActivateLevel = async (confirmed = false) => {
-    if (!activateModal) return;
-    if (selectedClassIds.length === 0) return;
+    if (!activateModal || selectedClassId === null) return;
+    if (!activateStartDate || !activateEndDate) return;
 
     setActivateLoading(true);
     try {
       const response = await programLevelsApi.activate(programId, activateModal.level.id, {
-        class_ids: selectedClassIds,
+        class_id: selectedClassId,
+        start_date: activateStartDate,
+        end_date: activateEndDate,
         confirmed,
       });
 
@@ -503,47 +508,72 @@ export default function ProgramDetailsPage() {
                 Activer — {activateModal.level.name}
               </h3>
               <p className="text-sm text-gray-500 mt-1">
-                Sélectionnez la ou les classes pour lesquelles activer ce niveau.
+                Choisissez la classe et la période. Les sessions seront générées automatiquement à partir de l'emploi du temps du niveau.
               </p>
             </div>
 
-            <div className="p-5 space-y-2 max-h-72 overflow-y-auto">
-              {program?.classes && program.classes.length > 0 ? (
-                program.classes.map((cls) => {
-                  const alreadyActive = activateModal.level.activations?.some(a => a.class_id === cls.id);
-                  return (
-                    <label
-                      key={cls.id}
-                      className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
-                        alreadyActive
-                          ? 'opacity-50 cursor-not-allowed bg-gray-50'
-                          : selectedClassIds.includes(cls.id)
-                          ? 'border-green-400 bg-green-50'
-                          : 'hover:bg-gray-50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedClassIds.includes(cls.id)}
-                        disabled={alreadyActive}
-                        onChange={() => toggleClassSelection(cls.id)}
-                        className="w-4 h-4 accent-green-600"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-secondary truncate">{cls.name}</p>
-                        <p className="text-xs text-gray-500">{cls.academic_year}</p>
-                      </div>
-                      {alreadyActive && (
-                        <span className="text-xs text-green-600 font-medium shrink-0">Déjà actif</span>
-                      )}
-                    </label>
-                  );
-                })
-              ) : (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  Aucune classe disponible pour ce programme.
-                </p>
-              )}
+            <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+              {/* Sélection de la classe (une seule) */}
+              <div>
+                <p className="text-xs font-medium text-gray-700 mb-2">Classe</p>
+                <div className="space-y-2">
+                  {program?.classes && program.classes.length > 0 ? (
+                    program.classes.map((cls) => {
+                      const alreadyActive = activateModal.level.activations?.some(a => a.class_id === cls.id);
+                      return (
+                        <label
+                          key={cls.id}
+                          className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                            selectedClassId === cls.id ? 'border-green-400 bg-green-50' : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="activate-class"
+                            checked={selectedClassId === cls.id}
+                            onChange={() => setSelectedClassId(cls.id)}
+                            className="w-4 h-4 accent-green-600"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm text-secondary truncate">{cls.name}</p>
+                            <p className="text-xs text-gray-500">{cls.academic_year}</p>
+                          </div>
+                          {alreadyActive && (
+                            <span className="text-xs text-amber-600 font-medium shrink-0">Déjà actif — redéfinir</span>
+                          )}
+                        </label>
+                      );
+                    })
+                  ) : (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      Aucune classe disponible pour ce programme.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Période du niveau */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Date de début</label>
+                  <input
+                    type="date"
+                    value={activateStartDate}
+                    onChange={(e) => setActivateStartDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Date de fin</label>
+                  <input
+                    type="date"
+                    value={activateEndDate}
+                    min={activateStartDate || undefined}
+                    onChange={(e) => setActivateEndDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Étape de confirmation */}
@@ -562,7 +592,7 @@ export default function ProgramDetailsPage() {
               </button>
               <button
                 onClick={() => handleActivateLevel(activateConfirm ? true : false)}
-                disabled={selectedClassIds.length === 0 || activateLoading}
+                disabled={!canSubmitActivation || activateLoading}
                 className="px-4 py-2 text-sm rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
               >
                 {activateLoading && (

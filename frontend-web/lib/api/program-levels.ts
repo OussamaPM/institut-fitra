@@ -13,7 +13,9 @@ export interface CreateLevelData {
 export interface UpdateLevelData extends CreateLevelData {}
 
 export interface ActivateLevelData {
-  class_ids: number[];
+  class_id: number;
+  start_date: string;
+  end_date: string;
   confirmed?: boolean;
 }
 
@@ -23,6 +25,7 @@ export interface ActivateLevelResponse {
   message: string;
   level?: ProgramLevel;
   emails_sent?: number;
+  sessions_count?: number;
 }
 
 export interface DeactivateLevelData {

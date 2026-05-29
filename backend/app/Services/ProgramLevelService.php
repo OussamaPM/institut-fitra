@@ -17,9 +17,10 @@ class ProgramLevelService
      */
     public function getStudentCurrentLevel(int $studentId, int $programId): int
     {
+        // L'élève est inscrit dès le 1er versement : on compte 'paid' ET 'partial'
         return (int) Order::where('student_id', $studentId)
             ->where('program_id', $programId)
-            ->where('status', 'paid')
+            ->whereIn('status', ['paid', 'partial'])
             ->max('level_number') ?? 0;
     }
 
@@ -50,9 +51,9 @@ class ProgramLevelService
      */
     public function getAvailableReinscriptions(int $studentId): Collection
     {
-        // Récupérer tous les programmes où l'élève a une commande payée
+        // Récupérer tous les programmes où l'élève a une commande payée ou en cours
         $programIds = Order::where('student_id', $studentId)
-            ->where('status', 'paid')
+            ->whereIn('status', ['paid', 'partial'])
             ->pluck('program_id')
             ->unique();
 
@@ -136,7 +137,7 @@ class ProgramLevelService
     public function getStudentLevelsHistory(int $studentId): Collection
     {
         return Order::where('student_id', $studentId)
-            ->where('status', 'paid')
+            ->whereIn('status', ['paid', 'partial'])
             ->with(['program', 'programLevel', 'class'])
             ->orderBy('created_at', 'desc')
             ->get()
@@ -150,6 +151,7 @@ class ProgramLevelService
                         'level' => $order->programLevel,
                         'class' => $order->class,
                         'amount' => $order->total_amount,
+                        'status' => $order->status,
                         'paid_at' => $order->created_at,
                     ];
                 });
@@ -174,31 +176,28 @@ class ProgramLevelService
     }
 
     /**
-     * Activer un niveau pour une ou plusieurs classes
-     * Crée les activations et retourne les nouvelles activations créées
+     * Activer un niveau pour une classe, avec une période (dates de début/fin).
+     * Crée l'activation ou met à jour ses dates si elle existe déjà.
      */
-    public function activateLevel(ProgramLevel $level, array $classIds, int $activatedBy): Collection
-    {
-        $newActivations = collect();
-
-        foreach ($classIds as $classId) {
-            $activation = ProgramLevelActivation::firstOrCreate(
-                [
-                    'program_level_id' => $level->id,
-                    'class_id' => $classId,
-                ],
-                [
-                    'activated_by' => $activatedBy,
-                    'activated_at' => now(),
-                ]
-            );
-
-            if ($activation->wasRecentlyCreated) {
-                $newActivations->push($activation);
-            }
-        }
-
-        return $newActivations;
+    public function activateLevelForClass(
+        ProgramLevel $level,
+        int $classId,
+        int $activatedBy,
+        string $startDate,
+        string $endDate
+    ): ProgramLevelActivation {
+        return ProgramLevelActivation::updateOrCreate(
+            [
+                'program_level_id' => $level->id,
+                'class_id' => $classId,
+            ],
+            [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'activated_by' => $activatedBy,
+                'activated_at' => now(),
+            ]
+        );
     }
 
     /**

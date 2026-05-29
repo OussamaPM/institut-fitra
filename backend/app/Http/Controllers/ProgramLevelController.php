@@ -6,9 +6,13 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProgramLevelRequest;
 use App\Mail\LevelAvailableNotification;
+use App\Models\ClassModel;
 use App\Models\Program;
 use App\Models\ProgramLevel;
+use App\Models\ProgramLevelActivation;
 use App\Services\ProgramLevelService;
+use App\Services\SessionGeneratorService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -153,8 +157,8 @@ class ProgramLevelController extends Controller
     }
 
     /**
-     * Activer un niveau pour une ou plusieurs classes
-     * Envoie des emails aux élèves éligibles de chaque classe
+     * Activer un niveau pour une classe, sur une période donnée.
+     * Génère les sessions du niveau et notifie les élèves éligibles.
      */
     public function activate(Request $request, Program $program, ProgramLevel $level): JsonResponse
     {
@@ -163,45 +167,67 @@ class ProgramLevelController extends Controller
         }
 
         $request->validate([
-            'class_ids' => 'required|array|min:1',
-            'class_ids.*' => 'integer|exists:classes,id',
+            'class_id' => 'required|integer|exists:classes,id',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
             'confirmed' => 'boolean',
         ]);
 
-        $classIds = $request->input('class_ids');
-
-        // Calculer le nombre total d'élèves éligibles à notifier
-        $totalEligible = 0;
-        foreach ($classIds as $classId) {
-            $totalEligible += $this->levelService
-                ->getEligibleStudentsForNotification($level, $classId)
-                ->count();
+        // Un niveau sans emploi du temps ne peut pas générer de sessions
+        if (! $level->schedule || count($level->schedule) === 0) {
+            return response()->json([
+                'message' => 'Ce niveau n\'a pas d\'emploi du temps défini. Ajoutez les jours et horaires avant de l\'activer.',
+            ], 422);
         }
 
+        $classId = (int) $request->input('class_id');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
         // Demander confirmation si des élèves vont être notifiés
-        if (! $request->boolean('confirmed') && $totalEligible > 0) {
+        $eligibleStudents = $this->levelService->getEligibleStudentsForNotification($level, $classId);
+        if (! $request->boolean('confirmed') && $eligibleStudents->count() > 0) {
             return response()->json([
                 'requires_confirmation' => true,
-                'eligible_students_count' => $totalEligible,
-                'message' => "{$totalEligible} élève(s) seront notifié(s) par email.",
+                'eligible_students_count' => $eligibleStudents->count(),
+                'message' => "{$eligibleStudents->count()} élève(s) seront notifié(s) par email.",
             ]);
         }
 
-        // Créer les activations
-        $newActivations = $this->levelService->activateLevel($level, $classIds, auth()->id());
+        $class = ClassModel::findOrFail($classId);
 
-        // Charger les relations pour les emails
-        $level->load(['program', 'teacher']);
+        $result = DB::transaction(function () use ($level, $classId, $startDate, $endDate, $class) {
+            $activation = $this->levelService->activateLevelForClass(
+                $level,
+                $classId,
+                auth()->id(),
+                $startDate,
+                $endDate
+            );
 
-        // Envoyer les emails par classe (uniquement pour les nouvelles activations)
+            // (Re)générer les sessions de ce niveau pour cette classe sur la période
+            $sessionGenerator = new SessionGeneratorService;
+            $sessionGenerator->deleteLevelSessions($class, $level);
+            $sessions = $sessionGenerator->generateSessionsForLevelActivation(
+                $class,
+                $level,
+                Carbon::parse($startDate),
+                Carbon::parse($endDate)
+            );
+
+            return [
+                'was_new' => $activation->wasRecentlyCreated,
+                'sessions_count' => $sessions->count(),
+            ];
+        });
+
+        // Emails uniquement lors de la première activation pour cette classe
         $emailsSent = 0;
-        foreach ($newActivations as $activation) {
-            $activation->load('class');
-            $students = $this->levelService->getEligibleStudentsForNotification($level, $activation->class_id);
-
-            foreach ($students as $student) {
+        if ($result['was_new']) {
+            $level->load(['program', 'teacher']);
+            foreach ($eligibleStudents as $student) {
                 Mail::to($student->email)->queue(
-                    new LevelAvailableNotification($level, $student, $activation->class)
+                    new LevelAvailableNotification($level, $student, $class)
                 );
                 $emailsSent++;
             }
@@ -209,9 +235,13 @@ class ProgramLevelController extends Controller
 
         $level->load(['teacher.teacherProfile', 'activations.class', 'program']);
 
+        $message = "Niveau activé pour la classe. {$result['sessions_count']} session(s) générée(s)";
+        $message .= $emailsSent > 0 ? ", {$emailsSent} email(s) envoyé(s)." : '.';
+
         return response()->json([
-            'message' => "Niveau activé pour " . count($classIds) . " classe(s). {$emailsSent} email(s) envoyé(s).",
+            'message' => $message,
             'emails_sent' => $emailsSent,
+            'sessions_count' => $result['sessions_count'],
             'level' => [
                 ...$level->toArray(),
                 'is_active' => $level->is_active,
@@ -235,10 +265,25 @@ class ProgramLevelController extends Controller
         ]);
 
         $classId = $request->input('class_id');
+
+        // Classes concernées AVANT suppression des activations (pour nettoyer leurs sessions)
+        $affectedClassIds = ProgramLevelActivation::where('program_level_id', $level->id)
+            ->when($classId !== null, fn ($q) => $q->where('class_id', $classId))
+            ->pluck('class_id');
+
         $deleted = $this->levelService->deactivateLevel($level, $classId);
 
+        // Supprimer les sessions générées de ce niveau pour les classes désactivées
+        $sessionGenerator = new SessionGeneratorService;
+        foreach ($affectedClassIds as $affectedClassId) {
+            $class = ClassModel::find($affectedClassId);
+            if ($class) {
+                $sessionGenerator->deleteLevelSessions($class, $level);
+            }
+        }
+
         $message = $classId
-            ? 'Niveau désactivé pour cette classe.'
+            ? 'Niveau désactivé pour cette classe (sessions supprimées).'
             : "Niveau désactivé pour toutes les classes ({$deleted} activation(s) supprimée(s)).";
 
         $level->load(['teacher.teacherProfile', 'activations.class', 'program']);
