@@ -571,18 +571,11 @@ class StripeService
             return ['success' => true, 'message' => 'Remboursement partiel ignoré'];
         }
 
-        $paymentIntentId = $charge->payment_intent ?? null;
-
-        return DB::transaction(function () use ($charge, $paymentIntentId) {
-            $payment = OrderPayment::where(function ($q) use ($charge, $paymentIntentId): void {
-                if ($paymentIntentId) {
-                    $q->where('stripe_payment_intent_id', $paymentIntentId);
-                }
-                $q->orWhere('stripe_charge_id', $charge->id);
-            })->lockForUpdate()->first();
+        return DB::transaction(function () use ($charge) {
+            $payment = $this->findPaymentForRefund($charge);
 
             if (! $payment) {
-                Log::warning("charge.refunded: paiement introuvable (payment_intent={$paymentIntentId}, charge={$charge->id})");
+                Log::warning("charge.refunded: paiement introuvable (charge={$charge->id})");
 
                 return ['success' => true, 'message' => 'Paiement introuvable'];
             }
@@ -620,6 +613,61 @@ class StripeService
 
             return ['success' => true, 'message' => 'Remboursement traité'];
         });
+    }
+
+    /**
+     * Retrouve le paiement remboursé : d'abord par les identifiants stockés,
+     * sinon en remontant via Stripe (charge → facture → abonnement → commande).
+     * Couvre le cas du 1er versement d'un abonnement dont le payment_intent
+     * n'a pas été enregistré.
+     */
+    private function findPaymentForRefund($charge): ?OrderPayment
+    {
+        $paymentIntentId = $charge->payment_intent ?? null;
+
+        // 1. Match direct par identifiants stockés (paiements uniques, versements 2+)
+        $payment = OrderPayment::where(function ($q) use ($charge, $paymentIntentId): void {
+            if ($paymentIntentId) {
+                $q->where('stripe_payment_intent_id', $paymentIntentId);
+            }
+            $q->orWhere('stripe_charge_id', $charge->id);
+        })->lockForUpdate()->first();
+
+        if ($payment) {
+            return $payment;
+        }
+
+        // 2. Fallback : remonter via la facture → abonnement → commande
+        try {
+            $invoiceId = $charge->invoice ?? null;
+            if (! $invoiceId && $paymentIntentId) {
+                $invoiceId = \Stripe\PaymentIntent::retrieve($paymentIntentId)->invoice ?? null;
+            }
+            if (! $invoiceId) {
+                return null;
+            }
+
+            $subscriptionId = \Stripe\Invoice::retrieve($invoiceId)->subscription ?? null;
+            if (! $subscriptionId) {
+                return null;
+            }
+
+            $order = Order::where('stripe_subscription_id', $subscriptionId)->first();
+            if (! $order) {
+                return null;
+            }
+
+            // Premier versement encaissé non encore remboursé
+            return $order->payments()
+                ->where('status', 'succeeded')
+                ->orderBy('installment_number')
+                ->lockForUpdate()
+                ->first();
+        } catch (\Exception $e) {
+            Log::error('charge.refunded fallback Stripe: '.$e->getMessage());
+
+            return null;
+        }
     }
 
     /**
