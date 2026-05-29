@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import HeroSection from '@/components/public/HeroSection';
 import PillarsSection from '@/components/public/PillarsSection';
 import ComingSoon from '@/components/public/ComingSoon';
@@ -259,12 +258,9 @@ export default async function HomePage() {
           <p className="text-gray-600 text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed mb-8">
             Des séminaires explorant une grande diversité de thèmes, abordant aussi bien les sciences islamiques que les questions contemporaines.
           </p>
-          <Link
-            href="/seminaire"
-            className="inline-flex items-center gap-2 px-7 py-3 bg-secondary text-white rounded-lg hover:bg-secondary/90 transition-colors font-semibold text-sm sm:text-base shadow-md"
-          >
-            Découvrir les séminaires →
-          </Link>
+          <span className="inline-flex items-center gap-2 px-7 py-3 bg-secondary/60 text-white rounded-lg font-semibold text-sm sm:text-base shadow-md cursor-default">
+            À venir
+          </span>
         </div>
       </section>
     </>
