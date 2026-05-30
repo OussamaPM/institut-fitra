@@ -37,16 +37,16 @@ export default function StudyPathSection() {
             1
           </div>
           <div className="bg-transparent p-0 sm:bg-gray-50 sm:p-8 rounded-2xl sm:border-l-4 sm:border-transparent sm:hover:border-primary sm:hover:bg-white sm:hover:shadow-lg transition-all duration-300">
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-2">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-2 pl-4 sm:pl-0">
               <h3 className="text-xl sm:text-2xl font-playfair font-bold text-secondary">Le Tronc Commun</h3>
               <span
-                className="text-white text-sm font-bold px-4 py-1 rounded-full mt-2 md:mt-0 italic shadow-sm"
+                className="text-white text-sm font-bold px-4 py-1 rounded-full mt-2 md:mt-0 italic shadow-sm self-start md:self-auto"
                 style={{ backgroundColor: '#7B5A4B' }}
               >
                 Durée : 4 ans
               </span>
             </div>
-            <p className="text-gray-500 italic mb-8">Le socle indispensable pour tout étudiant en quête de sens.</p>
+            <p className="text-gray-500 italic mb-8 pl-4 sm:pl-0">Le socle indispensable pour tout étudiant en quête de sens.</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
