@@ -19,12 +19,11 @@ export default function StudyPathSection() {
         </div>
       </div>
 
-      <div className="relative pl-12 md:pl-20">
+      <div className="relative pl-8 sm:pl-12 md:pl-20">
         {/* Ligne de progression */}
         <div
-          className="absolute top-5 bottom-0 w-0.5"
+          className="absolute top-5 bottom-0 w-0.5 left-3 sm:left-[20px]"
           style={{
-            left: '20px',
             background: 'linear-gradient(to bottom, #7B5A4B, #d1d5db)',
           }}
         />
@@ -32,12 +31,12 @@ export default function StudyPathSection() {
         {/* ÉTAPE 1 : Tronc Commun */}
         <div className="mb-20 relative">
           <div
-            className="absolute top-0 z-10 w-10 h-10 md:w-12 md:h-12 -left-12 md:-left-20 rounded-full flex items-center justify-center text-white font-bold shadow-lg border-4 border-white"
+            className="absolute top-0 z-10 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 -left-8 sm:-left-12 md:-left-20 rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-base shadow-lg border-4 border-white"
             style={{ backgroundColor: '#7B5A4B' }}
           >
             1
           </div>
-          <div className="bg-gray-50 p-8 rounded-2xl border-l-4 border-transparent hover:border-primary hover:bg-white hover:shadow-lg transition-all duration-300">
+          <div className="bg-transparent p-0 sm:bg-gray-50 sm:p-8 rounded-2xl sm:border-l-4 sm:border-transparent sm:hover:border-primary sm:hover:bg-white sm:hover:shadow-lg transition-all duration-300">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-2">
               <h3 className="text-xl sm:text-2xl font-playfair font-bold text-secondary">Le Tronc Commun</h3>
               <span

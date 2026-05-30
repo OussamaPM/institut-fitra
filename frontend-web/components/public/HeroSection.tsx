@@ -27,7 +27,7 @@ export default function HeroSection() {
           </p>
           <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
             <Link
-              href="#cursus"
+              href="/cursus"
               className="px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl text-center font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all"
             >
               Explorer le cursus
