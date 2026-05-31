@@ -6,6 +6,7 @@ import { Quiz, QuizSubmission, QuizScore } from '@/lib/types';
 import quizzesApi from '@/lib/api/quizzes';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { formatParis } from '@/lib/datetime';
 import {
   Loader2,
   CheckCircle,
@@ -86,7 +87,7 @@ export default function QuizReviewPage() {
               <BookOpen size={14} />
               <span>{quiz.session.title}</span>
               {quiz.session.scheduled_at && (
-                <span>· {format(new Date(quiz.session.scheduled_at), 'dd/MM/yyyy', { locale: fr })}</span>
+                <span>· {formatParis(quiz.session.scheduled_at, 'dd/MM/yyyy')}</span>
               )}
             </div>
           )}

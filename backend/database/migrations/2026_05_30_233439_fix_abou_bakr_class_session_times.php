@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 return new class extends Migration
 {
@@ -9,6 +10,8 @@ return new class extends Migration
      * Aligne les sessions de niveau 1 de la classe "Abou Bakr" sur le créneau
      * 21h00-22h30 (le programme Dar al-Arqam reste à 19h-20h15 car il est
      * rattaché à la nouvelle classe Omar ibn Khattab).
+     *
+     * No-op si la classe n'existe pas (dev/CI/nouveau clone).
      */
     public function up(): void
     {
@@ -17,7 +20,9 @@ return new class extends Migration
             ->first(['id']);
 
         if (! $class) {
-            throw new \RuntimeException('Migration interrompue : classe "Abou Bakr As-Siddiq" introuvable.');
+            Log::info('Migration fix_abou_bakr_class_session_times : classe introuvable, no-op.');
+
+            return;
         }
 
         $classId = $class->id;
@@ -35,7 +40,5 @@ return new class extends Migration
     /**
      * Modification one-shot sur les données prod, pas de rollback automatique.
      */
-    public function down(): void
-    {
-    }
+    public function down(): void {}
 };

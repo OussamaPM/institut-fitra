@@ -176,15 +176,17 @@ class ProgramLevelService
     }
 
     /**
-     * Activer un niveau pour une classe, avec une période (dates de début/fin).
-     * Crée l'activation ou met à jour ses dates si elle existe déjà.
+     * Activer un niveau pour une classe, avec une période (dates de début/fin)
+     * et optionnellement un emploi du temps spécifique à cette activation.
+     * Crée l'activation ou met à jour ses dates/schedule si elle existe déjà.
      */
     public function activateLevelForClass(
         ProgramLevel $level,
         int $classId,
         int $activatedBy,
         string $startDate,
-        string $endDate
+        string $endDate,
+        ?array $schedule = null
     ): ProgramLevelActivation {
         return ProgramLevelActivation::updateOrCreate(
             [
@@ -194,6 +196,7 @@ class ProgramLevelService
             [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
+                'schedule' => $schedule,
                 'activated_by' => $activatedBy,
                 'activated_at' => now(),
             ]

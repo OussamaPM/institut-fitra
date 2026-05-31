@@ -20,6 +20,7 @@ import {
   getDay,
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { formatParis, getParisHour, isSameDayParis, toParisWallClockDate } from '@/lib/datetime';
 import { Session, ClassModel } from '@/lib/types';
 import sessionsApi from '@/lib/api/sessions';
 import classesApi from '@/lib/api/classes';
@@ -142,7 +143,7 @@ export default function SessionsPage() {
   const getSessionsForDate = useCallback(
     (date: Date) => {
       return filteredSessions.filter(session =>
-        isSameDay(parseISO(session.scheduled_at), date)
+        isSameDayParis(session.scheduled_at, date)
       );
     },
     [filteredSessions]
@@ -324,7 +325,7 @@ export default function SessionsPage() {
                         } : undefined}
                       >
                         <span className="text-[11px] font-semibold text-slate-500">
-                          {format(parseISO(session.scheduled_at), 'HH:mm')}
+                          {formatParis(session.scheduled_at, 'HH:mm')}
                         </span>
                         <span
                           className={`text-[11px] font-medium truncate flex-1 ${colors.custom ? '' : colors.text}`}
@@ -414,8 +415,8 @@ export default function SessionsPage() {
           {/* Colonnes des jours */}
           {days.map(day => {
             const daySessions = getSessionsForDate(day);
-            const specialSessions = daySessions.filter(s => parseISO(s.scheduled_at).getHours() < 11);
-            const regularSessions = daySessions.filter(s => parseISO(s.scheduled_at).getHours() >= 11);
+            const specialSessions = daySessions.filter(s => getParisHour(s.scheduled_at) < 11);
+            const regularSessions = daySessions.filter(s => getParisHour(s.scheduled_at) >= 11);
 
             return (
               <div
@@ -442,7 +443,7 @@ export default function SessionsPage() {
                           color: colors.custom,
                         } : undefined}
                       >
-                        {format(sessionStart, 'HH:mm')} {getSessionDisplayTitle(session)}
+                        {formatParis(sessionStart, 'HH:mm')} {getSessionDisplayTitle(session)}
                         {hasZoom && <Video size={8} className="inline ml-1 text-blue-500" />}
                       </div>
                     );
@@ -488,7 +489,7 @@ export default function SessionsPage() {
                       >
                         <div className="flex items-center gap-1">
                           <span className="text-[9px] font-bold text-slate-500">
-                            {format(sessionStart, 'HH:mm')}-{format(sessionEnd, 'HH:mm')}
+                            {formatParis(sessionStart, 'HH:mm')}-{formatParis(sessionEnd, 'HH:mm')}
                           </span>
                           {hasZoom && <Video size={9} className="text-blue-500" />}
                         </div>
@@ -522,8 +523,8 @@ export default function SessionsPage() {
     const hourHeight = 50; // pixels par heure (réduit)
     const specialBlockHeight = 50; // hauteur du bloc spécial
 
-    const specialSessions = daySessions.filter(s => parseISO(s.scheduled_at).getHours() < 11);
-    const regularSessions = daySessions.filter(s => parseISO(s.scheduled_at).getHours() >= 11);
+    const specialSessions = daySessions.filter(s => getParisHour(s.scheduled_at) < 11);
+    const regularSessions = daySessions.filter(s => getParisHour(s.scheduled_at) >= 11);
 
     return (
       <div className="flex-1 overflow-auto">
@@ -579,7 +580,7 @@ export default function SessionsPage() {
                       } : undefined}
                     >
                       <span className="text-[10px] font-bold text-slate-500">
-                        {format(sessionStart, 'HH:mm')} - {format(sessionEnd, 'HH:mm')}
+                        {formatParis(sessionStart, 'HH:mm')} - {formatParis(sessionEnd, 'HH:mm')}
                       </span>
                       <span
                         className={`text-[11px] font-medium ml-2 ${colors.custom ? '' : colors.text}`}
@@ -655,7 +656,7 @@ export default function SessionsPage() {
                       <div className="flex items-center gap-1 text-[11px]">
                         <Clock size={10} />
                         <span>
-                          {format(sessionStart, 'HH:mm')} - {format(sessionEnd, 'HH:mm')}
+                          {formatParis(sessionStart, 'HH:mm')} - {formatParis(sessionEnd, 'HH:mm')}
                         </span>
                       </div>
                       <div className="flex items-center gap-1 text-[11px]">
@@ -738,7 +739,7 @@ export default function SessionsPage() {
                     style={colors.custom ? { borderLeftColor: colors.custom } : undefined}
                   >
                     <p className="text-[11px] font-bold text-slate-400 mb-0.5">
-                      {format(sessionStart, 'HH:mm')} - {format(sessionEnd, 'HH:mm')}
+                      {formatParis(sessionStart, 'HH:mm')} - {formatParis(sessionEnd, 'HH:mm')}
                     </p>
                     <h3
                       className="text-sm font-bold group-hover:text-primary transition-colors"

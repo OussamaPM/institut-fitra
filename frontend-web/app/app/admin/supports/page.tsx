@@ -7,6 +7,7 @@ import sessionsApi from '@/lib/api/sessions';
 import { Button, Badge, Modal } from '@/components/ui';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { formatParis } from '@/lib/datetime';
 import {
   FileText,
   Image as ImageIcon,
@@ -442,10 +443,10 @@ export default function SupportsPage() {
                           {row.session?.scheduled_at ? (
                             <>
                               <p className="text-sm text-gray-900 capitalize">
-                                {format(new Date(row.session.scheduled_at), 'EEEE', { locale: fr })}
+                                {formatParis(row.session.scheduled_at, 'EEEE')}
                               </p>
                               <p className="text-xs text-gray-500">
-                                {format(new Date(row.session.scheduled_at), 'd MMMM yyyy', { locale: fr })}
+                                {formatParis(row.session.scheduled_at, 'd MMMM yyyy')}
                               </p>
                             </>
                           ) : (
@@ -543,7 +544,7 @@ export default function SupportsPage() {
               <p className="font-medium">{uploadSession.title}</p>
               {uploadSession.scheduled_at && (
                 <p className="text-sm text-gray-500">
-                  {format(new Date(uploadSession.scheduled_at), 'EEEE d MMMM yyyy', { locale: fr })}
+                  {formatParis(uploadSession.scheduled_at, 'EEEE d MMMM yyyy')}
                 </p>
               )}
             </div>
@@ -617,7 +618,7 @@ export default function SupportsPage() {
               <p className="font-medium">{selectedSession.title}</p>
               {selectedSession.scheduled_at && (
                 <p className="text-sm text-gray-500">
-                  {format(new Date(selectedSession.scheduled_at), 'EEEE d MMMM yyyy', { locale: fr })}
+                  {formatParis(selectedSession.scheduled_at, 'EEEE d MMMM yyyy')}
                 </p>
               )}
             </div>

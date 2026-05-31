@@ -108,12 +108,23 @@ export interface ProgramLevelActivation {
   id: number;
   program_level_id: number;
   class_id: number;
+  start_date?: string;
+  end_date?: string;
+  schedule?: ProgramSchedule[] | null;
   activated_by: number;
   activated_at: string;
   class?: ClassModel;
   activator?: User;
   created_at: string;
   updated_at: string;
+}
+
+export interface ClassCurrentPeriod {
+  level_number: number;
+  level_name: string | null;
+  schedule: ProgramSchedule[] | null;
+  start_date: string | null;
+  end_date: string | null;
 }
 
 export interface ProgramLevel {
@@ -167,6 +178,8 @@ export interface ClassModel {
   parent_class_id?: number | null;
   parent_class?: ClassModel;
   child_classes?: ClassModel[];
+  current_period?: ClassCurrentPeriod;
+  level_activations?: ProgramLevelActivation[];
   created_at: string;
   updated_at: string;
 }

@@ -4,7 +4,38 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, Button, Input, Badge, Modal } from '@/components/ui';
 import { classesApi } from '@/lib/api/classes';
-import { ClassModel, ClassStudent } from '@/lib/types';
+import { ClassModel, ClassStudent, ProgramSchedule } from '@/lib/types';
+
+const DAY_SHORT: Record<string, string> = {
+  lundi: 'Lun',
+  mardi: 'Mar',
+  mercredi: 'Mer',
+  jeudi: 'Jeu',
+  vendredi: 'Ven',
+  samedi: 'Sam',
+  dimanche: 'Dim',
+};
+
+const formatTime = (time: string) => {
+  const [h, m] = time.split(':');
+  return m === '00' ? `${parseInt(h, 10)}h` : `${parseInt(h, 10)}h${m}`;
+};
+
+const formatSchedule = (schedule?: ProgramSchedule[] | null): string => {
+  if (!schedule || schedule.length === 0) return 'Aucun horaire';
+  const groups = new Map<string, string[]>();
+  schedule.forEach((slot) => {
+    const key = `${slot.start_time}-${slot.end_time}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(DAY_SHORT[slot.day] || slot.day);
+  });
+  return Array.from(groups.entries())
+    .map(([range, days]) => `${days.join(' & ')} ${formatTime(range.split('-')[0])}-${formatTime(range.split('-')[1])}`)
+    .join(' · ');
+};
+
+const formatDate = (date?: string | null) =>
+  date ? new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
 export default function ClassStudentsPage() {
   const params = useParams();
@@ -160,9 +191,48 @@ export default function ClassStudentsPage() {
         )}
       </div>
 
+      {/* Bloc info classe : période actuelle + horaires */}
+      {classData && (
+        <Card className="mb-6">
+          <div className="p-6">
+            <div className="flex items-start justify-between flex-wrap gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-gray-500 uppercase mb-1">Programme</p>
+                <p className="font-medium text-secondary">{classData.program?.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Classe : {formatDate(classData.start_date)} → {formatDate(classData.end_date)}
+                </p>
+              </div>
+              {classData.current_period && (
+                <>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase mb-1">Niveau actuel</p>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center justify-center w-7 h-7 bg-primary text-white rounded-full font-bold text-sm">
+                        {classData.current_period.level_number}
+                      </span>
+                      {classData.current_period.level_number > 1 && classData.current_period.level_name && (
+                        <span className="text-sm font-medium text-secondary">{classData.current_period.level_name}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formatDate(classData.current_period.start_date)} → {formatDate(classData.current_period.end_date)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase mb-1">Horaires</p>
+                    <p className="text-sm font-medium text-secondary">{formatSchedule(classData.current_period.schedule)}</p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Statistiques */}
       {classData && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <div className="p-6">
               <p className="text-sm text-gray-600 mb-1">Eleves inscrits</p>
@@ -184,14 +254,6 @@ export default function ClassStudentsPage() {
                 {classData.max_students
                   ? classData.max_students - students.length
                   : '∞'}
-              </p>
-            </div>
-          </Card>
-          <Card>
-            <div className="p-6">
-              <p className="text-sm text-gray-600 mb-1">Programme</p>
-              <p className="text-sm font-medium text-secondary truncate">
-                {classData.program?.name}
               </p>
             </div>
           </Card>

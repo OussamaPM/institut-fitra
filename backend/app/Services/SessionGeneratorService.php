@@ -26,6 +26,14 @@ class SessionGeneratorService
     ];
 
     /**
+     * Les horaires saisis dans les schedules sont interprétés comme des
+     * heures locales Europe/Paris. Le générateur les convertit en UTC
+     * avant stockage (app.timezone = UTC) pour que le frontend (qui parse
+     * l'ISO avec Z) ré-affiche la bonne heure locale dans le navigateur.
+     */
+    private const SCHEDULE_TIMEZONE = 'Europe/Paris';
+
+    /**
      * Génère les sessions du niveau 1 (programme de base) pour une classe,
      * à partir de l'emploi du temps du programme et des dates de la classe.
      * Ces sessions ont program_level_id = null.
@@ -53,16 +61,20 @@ class SessionGeneratorService
 
     /**
      * Génère les sessions d'un niveau supérieur pour une classe,
-     * à partir de l'emploi du temps du niveau et des dates de l'activation.
-     * Ces sessions sont taguées avec program_level_id = $level->id.
+     * à partir de l'emploi du temps du niveau (ou d'un override par activation)
+     * et des dates de l'activation. Ces sessions sont taguées avec
+     * program_level_id = $level->id.
      */
     public function generateSessionsForLevelActivation(
         ClassModel $class,
         ProgramLevel $level,
         Carbon $startDate,
-        Carbon $endDate
+        Carbon $endDate,
+        ?array $scheduleOverride = null
     ): Collection {
-        if (! $level->schedule || count($level->schedule) === 0) {
+        $schedule = $scheduleOverride ?: $level->schedule;
+
+        if (! $schedule || count($schedule) === 0) {
             throw new \Exception('Le niveau n\'a pas d\'emploi du temps défini.');
         }
 
@@ -73,7 +85,7 @@ class SessionGeneratorService
             classId: $class->id,
             programLevelId: $level->id,
             teacherId: $teacherId,
-            schedule: $level->schedule,
+            schedule: $schedule,
             startDate: $startDate,
             endDate: $endDate,
             titlePrefix: $level->name,
@@ -113,8 +125,26 @@ class SessionGeneratorService
                 [$startHour, $startMinute] = explode(':', $slot['start_time']);
                 [$endHour, $endMinute] = explode(':', $slot['end_time']);
 
-                $sessionStart = $currentDate->copy()->setTime((int) $startHour, (int) $startMinute, 0);
-                $sessionEnd = $currentDate->copy()->setTime((int) $endHour, (int) $endMinute, 0);
+                $sessionStart = Carbon::create(
+                    $currentDate->year,
+                    $currentDate->month,
+                    $currentDate->day,
+                    (int) $startHour,
+                    (int) $startMinute,
+                    0,
+                    self::SCHEDULE_TIMEZONE
+                )->utc();
+
+                $sessionEnd = Carbon::create(
+                    $currentDate->year,
+                    $currentDate->month,
+                    $currentDate->day,
+                    (int) $endHour,
+                    (int) $endMinute,
+                    0,
+                    self::SCHEDULE_TIMEZONE
+                )->utc();
+
                 $durationMinutes = $sessionStart->diffInMinutes($sessionEnd);
 
                 // Éviter les doublons (même classe, même niveau, même créneau)

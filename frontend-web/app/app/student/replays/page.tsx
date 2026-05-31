@@ -5,6 +5,7 @@ import { sessionsApi } from '@/lib/api';
 import { Session } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { formatParis } from '@/lib/datetime';
 import { Play, X, Calendar, BookOpen, Clock, Search } from 'lucide-react';
 
 export default function StudentReplays() {
@@ -143,8 +144,8 @@ export default function StudentReplays() {
                         <div className="flex items-center gap-2">
                           <Calendar size={13} className="flex-shrink-0" />
                           <span className="truncate">
-                            <span className="hidden sm:inline">{format(parseISO(session.scheduled_at), 'EEEE d MMMM yyyy', { locale: fr })}</span>
-                            <span className="sm:hidden">{format(parseISO(session.scheduled_at), 'd MMM yyyy', { locale: fr })}</span>
+                            <span className="hidden sm:inline">{formatParis(session.scheduled_at, 'EEEE d MMMM yyyy')}</span>
+                            <span className="sm:hidden">{formatParis(session.scheduled_at, 'd MMM yyyy')}</span>
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -188,7 +189,7 @@ export default function StudentReplays() {
             <div className="absolute -top-10 md:-top-12 left-0 text-white">
               <h3 className="font-medium text-sm md:text-base truncate max-w-[200px] md:max-w-none">{selectedSession.title}</h3>
               <p className="text-xs md:text-sm text-gray-400 hidden md:block">
-                {format(parseISO(selectedSession.scheduled_at), 'EEEE d MMMM yyyy', { locale: fr })}
+                {formatParis(selectedSession.scheduled_at, 'EEEE d MMMM yyyy')}
               </p>
             </div>
 

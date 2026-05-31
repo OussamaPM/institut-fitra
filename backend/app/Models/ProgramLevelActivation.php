@@ -12,6 +12,7 @@ class ProgramLevelActivation extends Model
         'class_id',
         'start_date',
         'end_date',
+        'schedule',
         'activated_by',
         'activated_at',
     ];
@@ -20,6 +21,7 @@ class ProgramLevelActivation extends Model
         'activated_at' => 'datetime',
         'start_date' => 'date',
         'end_date' => 'date',
+        'schedule' => 'array',
     ];
 
     public function programLevel(): BelongsTo

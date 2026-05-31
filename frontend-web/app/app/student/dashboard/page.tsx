@@ -9,6 +9,7 @@ import { FailedPayment } from '@/lib/api/failed-payments';
 import { Enrollment, Session, AvailableReinscription } from '@/lib/types';
 import { format, parseISO, isAfter, isBefore, addHours } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { formatParis } from '@/lib/datetime';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -402,14 +403,14 @@ export default function StudentDashboard() {
                         <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        <span className="hidden sm:inline">{format(parseISO(session.scheduled_at), 'EEEE d MMMM', { locale: fr })}</span>
-                        <span className="sm:hidden">{format(parseISO(session.scheduled_at), 'd MMM', { locale: fr })}</span>
+                        <span className="hidden sm:inline">{formatParis(session.scheduled_at, 'EEEE d MMMM')}</span>
+                        <span className="sm:hidden">{formatParis(session.scheduled_at, 'd MMM')}</span>
                       </span>
                       <span className="flex items-center gap-1">
                         <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        {format(parseISO(session.scheduled_at), 'HH:mm', { locale: fr })}
+                        {formatParis(session.scheduled_at, 'HH:mm')}
                       </span>
                     </div>
                     {canJoinSession(session) && getZoomLink(session) && (

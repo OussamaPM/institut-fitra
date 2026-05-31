@@ -7,6 +7,7 @@ import materialsApi from '@/lib/api/materials';
 import quizzesApi from '@/lib/api/quizzes';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { formatParis } from '@/lib/datetime';
 import {
   Calendar,
   Clock,
@@ -387,7 +388,7 @@ export default function SessionDetailModal({
               <p className="font-medium text-gray-700">Date</p>
             </div>
             <p className="text-lg text-secondary capitalize">
-              {format(scheduledDate, 'EEEE d MMMM yyyy', { locale: fr })}
+              {formatParis(scheduledDate, 'EEEE d MMMM yyyy')}
             </p>
           </div>
 
@@ -398,7 +399,7 @@ export default function SessionDetailModal({
               <p className="font-medium text-gray-700">Horaires</p>
             </div>
             <p className="text-lg text-secondary">
-              {format(scheduledDate, 'HH:mm')} - {format(endDate, 'HH:mm')}
+              {formatParis(scheduledDate, 'HH:mm')} - {formatParis(endDate, 'HH:mm')}
             </p>
             <p className="text-sm text-gray-500 mt-1">
               Durée : {Math.floor(session.duration_minutes / 60)}h

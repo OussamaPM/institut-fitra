@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Card, Button, Badge } from '@/components/ui';
 import { programsApi } from '@/lib/api/programs';
 import { programLevelsApi } from '@/lib/api/program-levels';
-import { Program, ProgramLevel } from '@/lib/types';
+import { Program, ProgramLevel, ProgramSchedule } from '@/lib/types';
 
 export default function ProgramDetailsPage() {
   const router = useRouter();
@@ -24,6 +24,7 @@ export default function ProgramDetailsPage() {
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
   const [activateStartDate, setActivateStartDate] = useState('');
   const [activateEndDate, setActivateEndDate] = useState('');
+  const [activateSchedule, setActivateSchedule] = useState<ProgramSchedule[]>([]);
   const [activateLoading, setActivateLoading] = useState(false);
   const [activateConfirm, setActivateConfirm] = useState<{ count: number } | null>(null);
 
@@ -47,11 +48,19 @@ export default function ProgramDetailsPage() {
     fetchData();
   }, [programId]);
 
+  const cloneSchedule = (schedule?: ProgramSchedule[] | null): ProgramSchedule[] => {
+    if (!schedule || schedule.length === 0) {
+      return [{ day: 'lundi', start_time: '09:00', end_time: '11:00' }];
+    }
+    return schedule.map((s) => ({ ...s }));
+  };
+
   const openActivateModal = (level: ProgramLevel) => {
     setActivateModal({ level });
     setSelectedClassId(null);
     setActivateStartDate('');
     setActivateEndDate('');
+    setActivateSchedule(cloneSchedule(level.schedule));
     setActivateConfirm(null);
   };
 
@@ -60,11 +69,43 @@ export default function ProgramDetailsPage() {
     setSelectedClassId(null);
     setActivateStartDate('');
     setActivateEndDate('');
+    setActivateSchedule([]);
     setActivateConfirm(null);
   };
 
+  // Pré-remplir le schedule avec l'activation existante quand l'admin sélectionne une classe déjà activée
+  const handleSelectClassForActivation = (classId: number) => {
+    setSelectedClassId(classId);
+    if (!activateModal) return;
+    const existing = activateModal.level.activations?.find((a) => a.class_id === classId);
+    if (existing) {
+      if (existing.start_date) setActivateStartDate(existing.start_date.slice(0, 10));
+      if (existing.end_date) setActivateEndDate(existing.end_date.slice(0, 10));
+      setActivateSchedule(cloneSchedule(existing.schedule ?? activateModal.level.schedule));
+    } else {
+      setActivateSchedule(cloneSchedule(activateModal.level.schedule));
+    }
+  };
+
+  const updateActivateScheduleSlot = (index: number, field: keyof ProgramSchedule, value: string) => {
+    setActivateSchedule((prev) =>
+      prev.map((slot, i) => (i === index ? { ...slot, [field]: value } : slot))
+    );
+  };
+
+  const addActivateScheduleSlot = () => {
+    setActivateSchedule((prev) => [...prev, { day: 'lundi', start_time: '09:00', end_time: '11:00' }]);
+  };
+
+  const removeActivateScheduleSlot = (index: number) => {
+    setActivateSchedule((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+  };
+
+  const isScheduleValid = activateSchedule.length > 0
+    && activateSchedule.every((slot) => slot.day && slot.start_time && slot.end_time && slot.end_time > slot.start_time);
+
   const canSubmitActivation = selectedClassId !== null && !!activateStartDate && !!activateEndDate
-    && activateEndDate > activateStartDate;
+    && activateEndDate > activateStartDate && isScheduleValid;
 
   const handleActivateLevel = async (confirmed = false) => {
     if (!activateModal || selectedClassId === null) return;
@@ -76,6 +117,7 @@ export default function ProgramDetailsPage() {
         class_id: selectedClassId,
         start_date: activateStartDate,
         end_date: activateEndDate,
+        schedule: activateSchedule,
         confirmed,
       });
 
@@ -531,7 +573,7 @@ export default function ProgramDetailsPage() {
                             type="radio"
                             name="activate-class"
                             checked={selectedClassId === cls.id}
-                            onChange={() => setSelectedClassId(cls.id)}
+                            onChange={() => handleSelectClassForActivation(cls.id)}
                             className="w-4 h-4 accent-green-600"
                           />
                           <div className="flex-1 min-w-0">
@@ -573,6 +615,72 @@ export default function ProgramDetailsPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   />
                 </div>
+              </div>
+
+              {/* Emploi du temps spécifique à cette activation */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-gray-700">Emploi du temps pour cette classe</p>
+                  <button
+                    type="button"
+                    onClick={addActivateScheduleSlot}
+                    className="text-xs text-green-700 hover:text-green-800 font-medium"
+                  >
+                    + Ajouter un créneau
+                  </button>
+                </div>
+                <p className="text-[11px] text-gray-500 mb-2">
+                  Pré-rempli avec l'emploi du temps du niveau. Modifiez-le si les horaires diffèrent pour cette classe.
+                </p>
+                <div className="space-y-2">
+                  {activateSchedule.map((slot, index) => (
+                    <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                      <select
+                        value={slot.day}
+                        onChange={(e) => updateActivateScheduleSlot(index, 'day', e.target.value)}
+                        className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-green-500 focus:border-transparent"
+                      >
+                        <option value="lundi">Lundi</option>
+                        <option value="mardi">Mardi</option>
+                        <option value="mercredi">Mercredi</option>
+                        <option value="jeudi">Jeudi</option>
+                        <option value="vendredi">Vendredi</option>
+                        <option value="samedi">Samedi</option>
+                        <option value="dimanche">Dimanche</option>
+                      </select>
+                      <input
+                        type="time"
+                        value={slot.start_time}
+                        onChange={(e) => updateActivateScheduleSlot(index, 'start_time', e.target.value)}
+                        className="w-24 px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-green-500 focus:border-transparent"
+                      />
+                      <span className="text-xs text-gray-400">→</span>
+                      <input
+                        type="time"
+                        value={slot.end_time}
+                        onChange={(e) => updateActivateScheduleSlot(index, 'end_time', e.target.value)}
+                        className="w-24 px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-green-500 focus:border-transparent"
+                      />
+                      {activateSchedule.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeActivateScheduleSlot(index)}
+                          className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
+                          title="Supprimer ce créneau"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {!isScheduleValid && (
+                  <p className="text-[11px] text-amber-600 mt-1">
+                    Chaque créneau doit avoir une heure de fin postérieure à l'heure de début.
+                  </p>
+                )}
               </div>
             </div>
 

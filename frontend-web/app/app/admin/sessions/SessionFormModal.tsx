@@ -5,8 +5,8 @@ import { Session, ClassModel } from '@/lib/types';
 import sessionsApi from '@/lib/api/sessions';
 import { useAuth } from '@/contexts/AuthContext';
 import { Modal, Button, Input } from '@/components/ui';
-import { format } from 'date-fns';
 import { X } from 'lucide-react';
+import { isoToParisInput, parisInputToIso } from '@/lib/datetime';
 
 const SESSION_COLORS = [
   { value: '', label: 'Par défaut' },
@@ -43,9 +43,7 @@ export default function SessionFormModal({
     teacher_id: session?.teacher_id || user?.id || '',
     title: session?.title || '',
     description: session?.description || '',
-    scheduled_at: session?.scheduled_at
-      ? format(new Date(session.scheduled_at), "yyyy-MM-dd'T'HH:mm")
-      : '',
+    scheduled_at: session?.scheduled_at ? isoToParisInput(session.scheduled_at) : '',
     duration_minutes: session?.duration_minutes || 90,
     status: session?.status || 'scheduled',
     color: session?.color || '',
@@ -98,7 +96,7 @@ export default function SessionFormModal({
         class_id: Number(formData.class_id),
         teacher_id: Number(formData.teacher_id),
         duration_minutes: Number(formData.duration_minutes),
-        scheduled_at: new Date(formData.scheduled_at).toISOString(),
+        scheduled_at: parisInputToIso(formData.scheduled_at),
         color: formData.color || null,
       };
 
@@ -192,7 +190,7 @@ export default function SessionFormModal({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="scheduled_at" className="block text-sm font-medium text-gray-700 mb-1">
-              Date et heure <span className="text-red-500">*</span>
+              Date et heure (Paris) <span className="text-red-500">*</span>
             </label>
             <input
               type="datetime-local"

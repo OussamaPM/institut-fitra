@@ -9,6 +9,7 @@ import quizzesApi from '@/lib/api/quizzes';
 import { Session, Enrollment, SessionMaterial, Quiz } from '@/lib/types';
 import { format, parseISO, isAfter, isBefore, addHours, addMinutes, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, startOfWeek, endOfWeek, isToday } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { formatParis, getParisHour, isSameDayParis, toParisWallClockDate } from '@/lib/datetime';
 import { FileText, Image as ImageIcon, Download, Loader2, Play, X, ChevronLeft, ChevronRight, Calendar, List, Video, HelpCircle } from 'lucide-react';
 
 // Couleurs par classe (rotation)
@@ -121,14 +122,14 @@ function SessionDetailModal({ session, quiz, onClose }: SessionDetailModalProps)
               <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <span className="text-sm md:text-base">{format(sessionStart, 'EEEE d MMMM yyyy', { locale: fr })}</span>
+              <span className="text-sm md:text-base">{formatParis(sessionStart, 'EEEE d MMMM yyyy')}</span>
             </div>
             <div className="flex items-center gap-3 text-secondary">
               <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span className="text-sm md:text-base">
-                {format(sessionStart, 'HH:mm', { locale: fr })} - {format(sessionEnd, 'HH:mm', { locale: fr })}
+                {formatParis(sessionStart, 'HH:mm')} - {formatParis(sessionEnd, 'HH:mm')}
                 <span className="text-gray-400 ml-2">({session.duration_minutes} min)</span>
               </span>
             </div>
@@ -463,7 +464,7 @@ export default function StudentPlanning() {
 
   const getSessionsForDate = useCallback((date: Date) => {
     return getFilteredSessions().filter(session =>
-      isSameDay(parseISO(session.scheduled_at), date)
+      isSameDayParis(session.scheduled_at, date)
     );
   }, [getFilteredSessions]);
 
@@ -611,7 +612,7 @@ export default function StudentPlanning() {
                           } : undefined}
                         >
                           <span className="text-[11px] font-semibold text-slate-500">
-                            {format(parseISO(session.scheduled_at), 'HH:mm')}
+                            {formatParis(session.scheduled_at, 'HH:mm')}
                           </span>
                           <span
                             className={`text-[11px] font-medium truncate flex-1 ${colors.custom ? '' : colors.text}`}
@@ -722,8 +723,8 @@ export default function StudentPlanning() {
           {/* Colonnes des jours */}
           {days.map(day => {
             const daySessions = getSessionsForDate(day);
-            const specialSessions = daySessions.filter(s => parseISO(s.scheduled_at).getHours() < 11);
-            const regularSessions = daySessions.filter(s => parseISO(s.scheduled_at).getHours() >= 11);
+            const specialSessions = daySessions.filter(s => getParisHour(s.scheduled_at) < 11);
+            const regularSessions = daySessions.filter(s => getParisHour(s.scheduled_at) >= 11);
 
             return (
               <div
@@ -750,7 +751,7 @@ export default function StudentPlanning() {
                           color: colors.custom,
                         } : undefined}
                       >
-                        {format(sessionStart, 'HH:mm')}
+                        {formatParis(sessionStart, 'HH:mm')}
                         <span className="hidden md:inline"> {getSessionDisplayTitle(session)}</span>
                         {hasZoom && <Video size={8} className="inline ml-1 text-blue-500" />}
                       </div>
@@ -767,8 +768,9 @@ export default function StudentPlanning() {
                   {/* Sessions positionnées absolument (évite la duplication) */}
                   {regularSessions.map(session => {
                     const sessionStart = parseISO(session.scheduled_at);
-                    const startHour = sessionStart.getHours();
-                    const startMinutes = sessionStart.getMinutes();
+                    const parisWallClock = toParisWallClockDate(sessionStart);
+                    const startHour = parisWallClock.getHours();
+                    const startMinutes = parisWallClock.getMinutes();
                     const durationHours = session.duration_minutes / 60;
 
                     // Position en pourcentage
@@ -798,7 +800,7 @@ export default function StudentPlanning() {
                       >
                         <div className="flex items-center gap-1">
                           <span className="text-[8px] md:text-[9px] font-bold text-slate-500">
-                            {format(sessionStart, 'HH:mm')}-{format(sessionEnd, 'HH:mm')}
+                            {formatParis(sessionStart, 'HH:mm')}-{formatParis(sessionEnd, 'HH:mm')}
                           </span>
                           {sessionQuiz && <HelpCircle size={9} className={`${sessionQuiz.submitted ? 'text-green-500' : 'text-orange-500'} hidden md:block`} />}
                           {hasZoom && <Video size={9} className="text-blue-500 hidden md:block" />}
@@ -879,10 +881,10 @@ export default function StudentPlanning() {
                             className={`font-bold text-sm md:text-base capitalize ${colors.custom ? '' : colors.text}`}
                             style={colors.custom ? { color: colors.custom } : undefined}
                           >
-                            <span className="hidden sm:inline">{format(sessionStart, 'EEEE d MMMM', { locale: fr })}</span>
-                            <span className="sm:hidden">{format(sessionStart, 'EEE d MMM', { locale: fr })}</span>
+                            <span className="hidden sm:inline">{formatParis(sessionStart, 'EEEE d MMMM')}</span>
+                            <span className="sm:hidden">{formatParis(sessionStart, 'EEE d MMM')}</span>
                             <span className="mx-2">•</span>
-                            <span>{format(sessionStart, 'HH:mm')} - {format(sessionEnd, 'HH:mm')}</span>
+                            <span>{formatParis(sessionStart, 'HH:mm')} - {formatParis(sessionEnd, 'HH:mm')}</span>
                           </h3>
                           {sessionZoomLink && (
                             <Video size={14} className="text-blue-500 flex-shrink-0" />
@@ -946,10 +948,10 @@ export default function StudentPlanning() {
                       ></div>
                       <div className="min-w-0 flex-1">
                         <h3 className="font-medium text-slate-700 text-sm md:text-base capitalize">
-                          <span className="hidden sm:inline">{format(sessionStart, 'EEEE d MMMM', { locale: fr })}</span>
-                          <span className="sm:hidden">{format(sessionStart, 'EEE d MMM', { locale: fr })}</span>
+                          <span className="hidden sm:inline">{formatParis(sessionStart, 'EEEE d MMMM')}</span>
+                          <span className="sm:hidden">{formatParis(sessionStart, 'EEE d MMM')}</span>
                           <span className="mx-2">•</span>
-                          <span>{format(sessionStart, 'HH:mm')} - {format(sessionEnd, 'HH:mm')}</span>
+                          <span>{formatParis(sessionStart, 'HH:mm')} - {formatParis(sessionEnd, 'HH:mm')}</span>
                         </h3>
                         <p className="text-xs md:text-sm text-slate-500 truncate">
                           {getSessionDisplayTitle(session)} • {session.class?.program?.name}

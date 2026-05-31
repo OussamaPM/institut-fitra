@@ -38,6 +38,7 @@ class ClassModel extends Model
     protected $appends = [
         'enrolled_students_count',
         'remaining_capacity',
+        'current_period',
     ];
 
     /**
@@ -81,6 +82,14 @@ class ClassModel extends Model
     }
 
     /**
+     * Relation : Activations de niveaux supérieurs sur cette classe
+     */
+    public function levelActivations(): HasMany
+    {
+        return $this->hasMany(ProgramLevelActivation::class, 'class_id');
+    }
+
+    /**
      * Relation : Une classe a plusieurs élèves (via inscriptions)
      */
     public function students(): BelongsToMany
@@ -109,6 +118,48 @@ class ClassModel extends Model
         }
 
         return max(0, $this->max_students - $this->enrolled_students_count);
+    }
+
+    /**
+     * Accessor : Période active de la classe (niveau + dates + emploi du temps).
+     *
+     * Sélectionne l'activation de niveau supérieur dont la période contient aujourd'hui.
+     * Si aucune ne matche, retombe sur le niveau 1 (programme de base + dates de la classe).
+     */
+    public function getCurrentPeriodAttribute(): array
+    {
+        $this->loadMissing(['program', 'levelActivations.programLevel']);
+
+        $today = now()->startOfDay();
+
+        $activeActivation = $this->levelActivations
+            ->filter(function ($activation) use ($today) {
+                if (! $activation->start_date || ! $activation->end_date) {
+                    return false;
+                }
+
+                return $activation->start_date->lte($today) && $activation->end_date->gte($today);
+            })
+            ->sortByDesc(fn ($activation) => $activation->programLevel?->level_number ?? 0)
+            ->first();
+
+        if ($activeActivation && $activeActivation->programLevel) {
+            return [
+                'level_number' => $activeActivation->programLevel->level_number,
+                'level_name' => $activeActivation->programLevel->name,
+                'schedule' => $activeActivation->schedule ?: $activeActivation->programLevel->schedule,
+                'start_date' => $activeActivation->start_date?->toDateString(),
+                'end_date' => $activeActivation->end_date?->toDateString(),
+            ];
+        }
+
+        return [
+            'level_number' => 1,
+            'level_name' => $this->program?->name,
+            'schedule' => $this->program?->schedule,
+            'start_date' => $this->start_date?->toDateString(),
+            'end_date' => $this->end_date?->toDateString(),
+        ];
     }
 
     /**

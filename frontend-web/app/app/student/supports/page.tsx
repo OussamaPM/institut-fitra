@@ -7,6 +7,7 @@ import { enrollmentsApi } from '@/lib/api';
 import quizzesApi from '@/lib/api/quizzes';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { formatParis } from '@/lib/datetime';
 import {
   FileText,
   Image as ImageIcon,
@@ -297,7 +298,7 @@ export default function StudentSupportsPage() {
                         <Calendar size={16} className="text-gray-400" />
                         <span className="text-sm text-gray-600">
                           {material.session?.scheduled_at
-                            ? format(new Date(material.session.scheduled_at), 'dd/MM/yyyy', { locale: fr })
+                            ? formatParis(material.session.scheduled_at, 'dd/MM/yyyy')
                             : '-'}
                         </span>
                       </div>
@@ -359,7 +360,7 @@ export default function StudentSupportsPage() {
                     <Calendar size={14} className="text-gray-400 flex-shrink-0" />
                     <span>
                       {material.session?.scheduled_at
-                        ? format(new Date(material.session.scheduled_at), 'dd/MM/yyyy', { locale: fr })
+                        ? formatParis(material.session.scheduled_at, 'dd/MM/yyyy')
                         : '-'}
                     </span>
                   </div>
@@ -438,7 +439,7 @@ export default function StudentSupportsPage() {
             <div className="absolute -top-10 md:-top-12 left-0 text-white">
               <h3 className="font-medium text-sm md:text-base truncate max-w-[200px] md:max-w-none">{selectedSession.title}</h3>
               <p className="text-xs md:text-sm text-gray-400 hidden md:block">
-                {selectedSession.scheduled_at && format(new Date(selectedSession.scheduled_at), 'EEEE d MMMM yyyy', { locale: fr })}
+                {selectedSession.scheduled_at && formatParis(selectedSession.scheduled_at, 'EEEE d MMMM yyyy')}
               </p>
             </div>
 

@@ -170,13 +170,20 @@ class ProgramLevelController extends Controller
             'class_id' => 'required|integer|exists:classes,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
+            'schedule' => 'nullable|array',
+            'schedule.*.day' => 'required_with:schedule|string|in:lundi,mardi,mercredi,jeudi,vendredi,samedi,dimanche',
+            'schedule.*.start_time' => 'required_with:schedule|date_format:H:i',
+            'schedule.*.end_time' => 'required_with:schedule|date_format:H:i|after:schedule.*.start_time',
             'confirmed' => 'boolean',
         ]);
 
-        // Un niveau sans emploi du temps ne peut pas générer de sessions
-        if (! $level->schedule || count($level->schedule) === 0) {
+        $scheduleOverride = $request->input('schedule');
+        $effectiveSchedule = $scheduleOverride ?: $level->schedule;
+
+        // Un niveau sans emploi du temps (ni override) ne peut pas générer de sessions
+        if (! $effectiveSchedule || count($effectiveSchedule) === 0) {
             return response()->json([
-                'message' => 'Ce niveau n\'a pas d\'emploi du temps défini. Ajoutez les jours et horaires avant de l\'activer.',
+                'message' => 'Aucun emploi du temps défini. Renseignez les jours et horaires avant d\'activer.',
             ], 422);
         }
 
@@ -196,13 +203,14 @@ class ProgramLevelController extends Controller
 
         $class = ClassModel::findOrFail($classId);
 
-        $result = DB::transaction(function () use ($level, $classId, $startDate, $endDate, $class) {
+        $result = DB::transaction(function () use ($level, $classId, $startDate, $endDate, $class, $scheduleOverride) {
             $activation = $this->levelService->activateLevelForClass(
                 $level,
                 $classId,
                 auth()->id(),
                 $startDate,
-                $endDate
+                $endDate,
+                $scheduleOverride
             );
 
             // (Re)générer les sessions de ce niveau pour cette classe sur la période
@@ -212,7 +220,8 @@ class ProgramLevelController extends Controller
                 $class,
                 $level,
                 Carbon::parse($startDate),
-                Carbon::parse($endDate)
+                Carbon::parse($endDate),
+                $scheduleOverride
             );
 
             return [

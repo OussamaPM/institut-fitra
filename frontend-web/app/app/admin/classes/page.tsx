@@ -5,7 +5,37 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, Badge } from '@/components/ui';
 import { classesApi } from '@/lib/api/classes';
-import { ClassModel } from '@/lib/types';
+import { ClassModel, ProgramSchedule } from '@/lib/types';
+
+const DAY_SHORT: Record<string, string> = {
+  lundi: 'Lun',
+  mardi: 'Mar',
+  mercredi: 'Mer',
+  jeudi: 'Jeu',
+  vendredi: 'Ven',
+  samedi: 'Sam',
+  dimanche: 'Dim',
+};
+
+// "21:00" → "21h", "21:30" → "21h30"
+const formatTime = (time: string) => {
+  const [h, m] = time.split(':');
+  return m === '00' ? `${parseInt(h, 10)}h` : `${parseInt(h, 10)}h${m}`;
+};
+
+// Regroupe les créneaux ayant les mêmes horaires (ex: "Lun & Jeu 21h-22h30")
+const formatSchedule = (schedule?: ProgramSchedule[] | null): string => {
+  if (!schedule || schedule.length === 0) return 'Aucun horaire';
+  const groups = new Map<string, string[]>();
+  schedule.forEach((slot) => {
+    const key = `${slot.start_time}-${slot.end_time}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(DAY_SHORT[slot.day] || slot.day);
+  });
+  return Array.from(groups.entries())
+    .map(([range, days]) => `${days.join(' & ')} ${formatTime(range.split('-')[0])}-${formatTime(range.split('-')[1])}`)
+    .join(' · ');
+};
 
 export default function AdminClassesPage() {
   const router = useRouter();
@@ -139,12 +169,23 @@ export default function AdminClassesPage() {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
+            <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500 flex-wrap">
               <span>{formatDate(cls.start_date)} → {formatDate(cls.end_date)}</span>
               <span className="font-medium text-primary">
                 {cls.enrolled_students_count ?? 0} élève{(cls.enrolled_students_count ?? 0) > 1 ? 's' : ''}
                 {cls.max_students && ` / ${cls.max_students}`}
               </span>
+              {cls.current_period && (
+                <>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-primary/10 text-primary rounded font-medium">
+                    Niveau {cls.current_period.level_number}
+                    {cls.current_period.level_number > 1 && cls.current_period.level_name && (
+                      <span className="text-gray-500 font-normal">· {cls.current_period.level_name}</span>
+                    )}
+                  </span>
+                  <span className="text-gray-600">{formatSchedule(cls.current_period.schedule)}</span>
+                </>
+              )}
             </div>
           </div>
 

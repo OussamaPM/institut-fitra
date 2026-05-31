@@ -18,7 +18,13 @@ class ClassController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            $query = ClassModel::with(['program.teacher.teacherProfile', 'program.creator.teacherProfile', 'parentClass', 'childClasses'])
+            $query = ClassModel::with([
+                'program.teacher.teacherProfile',
+                'program.creator.teacherProfile',
+                'parentClass',
+                'childClasses',
+                'levelActivations.programLevel',
+            ])
                 ->withCount(['enrollments as enrolled_students' => fn ($q) => $q->where('status', 'active')]);
 
             // Filtre par programme
@@ -129,6 +135,7 @@ class ClassController extends Controller
                 'enrollments.student.studentProfile',
                 'parentClass',
                 'childClasses',
+                'levelActivations.programLevel',
                 'sessions' => function ($query) {
                     $query->orderBy('scheduled_at', 'desc')->limit(10);
                 },

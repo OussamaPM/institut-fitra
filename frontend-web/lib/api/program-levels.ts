@@ -16,6 +16,7 @@ export interface ActivateLevelData {
   class_id: number;
   start_date: string;
   end_date: string;
+  schedule?: ProgramSchedule[];
   confirmed?: boolean;
 }
 

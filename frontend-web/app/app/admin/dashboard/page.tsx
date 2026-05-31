@@ -6,6 +6,7 @@ import apiClient from '@/lib/api/client';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { formatParis } from '@/lib/datetime';
 
 interface DashboardStats {
   totalUsers: number;
@@ -193,7 +194,7 @@ export default function AdminDashboardPage() {
   };
 
   const formatTime = (dateString: string) => {
-    return format(new Date(dateString), 'HH:mm', { locale: fr });
+    return formatParis(dateString, 'HH:mm');
   };
 
   const formatDate = (dateString: string) => {
@@ -534,7 +535,7 @@ export default function AdminDashboardPage() {
                 {upcomingSessions.map((session) => (
                   <div key={session.id} className="flex items-start gap-3 py-2 border-b border-gray-100 last:border-0">
                     <div className="bg-primary/10 rounded-lg px-2 py-1 text-center min-w-[50px]">
-                      <p className="text-xs text-gray-500">{format(new Date(session.scheduled_at), 'dd MMM', { locale: fr })}</p>
+                      <p className="text-xs text-gray-500">{formatParis(session.scheduled_at, 'dd MMM')}</p>
                       <p className="text-sm font-bold text-primary">{formatTime(session.scheduled_at)}</p>
                     </div>
                     <div className="flex-1 min-w-0">
