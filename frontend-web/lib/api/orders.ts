@@ -13,11 +13,12 @@ interface OrderFilters {
 interface ManualOrderData {
   program_id: number;
   class_id?: number;
+  program_level_id?: number;
   customer_first_name: string;
   customer_last_name: string;
   customer_email: string;
   customer_phone?: string;
-  customer_gender: 'male' | 'female';
+  customer_gender?: 'male' | 'female';
   payment_method: 'free' | 'cash' | 'transfer';
   custom_amount?: number;
   admin_notes?: string;

@@ -25,6 +25,29 @@ class ProgramLevelService
     }
 
     /**
+     * Niveaux (program_level_id) auxquels un élève a accès dans une classe donnée.
+     *
+     * Retourne un tableau contenant null (niveau de base, accessible dès lors que l'élève
+     * est inscrit à la classe) + les ids des niveaux supérieurs payés (paid/partial) pour
+     * cette classe. Sert à filtrer les sessions, supports et replays par niveau.
+     *
+     * @return array<int, int|null>
+     */
+    public function accessibleLevelIds(int $studentId, int $classId): array
+    {
+        $paidLevelIds = Order::where('student_id', $studentId)
+            ->where('class_id', $classId)
+            ->whereIn('status', ['paid', 'partial'])
+            ->whereNotNull('program_level_id')
+            ->pluck('program_level_id')
+            ->unique()
+            ->values()
+            ->all();
+
+        return array_merge([null], $paidLevelIds);
+    }
+
+    /**
      * Récupérer le prochain niveau disponible pour un élève
      * Retourne null si pas de niveau disponible ou si l'élève n'a pas le niveau précédent
      */

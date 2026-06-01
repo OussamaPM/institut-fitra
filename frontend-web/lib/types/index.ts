@@ -114,6 +114,7 @@ export interface ProgramLevelActivation {
   activated_by: number;
   activated_at: string;
   class?: ClassModel;
+  program_level?: ProgramLevel;
   activator?: User;
   created_at: string;
   updated_at: string;
@@ -219,6 +220,7 @@ export interface ClassStudent {
   last_name: string;
   student_profile?: StudentProfile;
   enrollment_status: EnrollmentStatus;
+  payment_status?: 'paid' | 'partial'; // présent uniquement pour les niveaux 2+ (statut de réinscription)
   enrolled_at: string;
 }
 
@@ -375,6 +377,7 @@ export interface OrderPaymentHistory {
   total_amount: number;
   installments_count: number;
   status: OrderStatus;
+  payment_method?: PaymentMethod;
   created_at: string;
   payments: PaymentHistoryItem[];
 }

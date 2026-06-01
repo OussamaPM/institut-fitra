@@ -7,12 +7,15 @@ namespace App\Http\Controllers;
 use App\Http\Requests\SessionRequest;
 use App\Models\ClassModel;
 use App\Models\Session;
+use App\Services\ProgramLevelService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class SessionController extends Controller
 {
+    public function __construct(private ProgramLevelService $programLevelService) {}
+
     /**
      * Display a listing of sessions.
      */
@@ -25,11 +28,9 @@ class SessionController extends Controller
 
             // Filter based on user role
             if ($user->role === 'student') {
-                // Students see only sessions of classes they're enrolled in
-                $query->whereHas('class.enrollments', function ($q) use ($user): void {
-                    $q->where('student_id', $user->id)
-                        ->where('status', 'active');
-                });
+                // Students see only sessions of classes they're enrolled in,
+                // limitées aux niveaux auxquels ils ont accès (niveau de base + niveaux payés).
+                $query->visibleToStudent($user->id);
             } elseif ($user->role === 'teacher') {
                 // Teachers see only their own sessions
                 $query->where('teacher_id', $user->id);
@@ -114,6 +115,14 @@ class SessionController extends Controller
                 if (! $enrolled) {
                     return response()->json([
                         'message' => 'Vous n\'êtes pas inscrit à cette classe.',
+                    ], 403);
+                }
+
+                // Vérifier l'accès au niveau de la session
+                $accessibleLevelIds = $this->programLevelService->accessibleLevelIds($user->id, $session->class_id);
+                if (! in_array($session->program_level_id, $accessibleLevelIds, true)) {
+                    return response()->json([
+                        'message' => 'Vous n\'avez pas accès à ce niveau.',
                     ], 403);
                 }
             } elseif ($user->role === 'teacher' && $session->teacher_id !== $user->id) {

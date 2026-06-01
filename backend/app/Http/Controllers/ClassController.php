@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ClassRequest;
 use App\Models\ClassModel;
+use App\Models\Order;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -265,7 +266,7 @@ class ClassController extends Controller
     /**
      * Get students enrolled in a specific class.
      */
-    public function students(ClassModel $class): JsonResponse
+    public function students(ClassModel $class, Request $request): JsonResponse
     {
         try {
             // Vérifier l'autorisation
@@ -275,6 +276,38 @@ class ClassController extends Controller
                 ], 403);
             }
 
+            $levelNumber = (int) $request->input('level', 1);
+
+            // Niveau 2+ : élèves réinscrits = commandes payées/partielles pour ce niveau dans cette classe.
+            // Un même élève conserve son inscription de base (niveau 1) ; il n'apparaît au niveau N
+            // que s'il a procédé à la réinscription (1er versement suffit).
+            if ($levelNumber > 1) {
+                $orders = Order::where('class_id', $class->id)
+                    ->where('level_number', $levelNumber)
+                    ->whereIn('status', ['paid', 'partial'])
+                    ->with('student.studentProfile')
+                    ->orderByRaw("FIELD(status, 'paid', 'partial')")
+                    ->get()
+                    ->filter(fn ($order) => $order->student !== null)
+                    ->unique(fn ($order) => $order->student_id);
+
+                $students = $orders->values()->map(function ($order) {
+                    return [
+                        'id' => $order->student->id,
+                        'email' => $order->student->email,
+                        'first_name' => $order->student->first_name,
+                        'last_name' => $order->student->last_name,
+                        'student_profile' => $order->student->studentProfile,
+                        'enrollment_status' => 'active',
+                        'payment_status' => $order->status,
+                        'enrolled_at' => $order->created_at,
+                    ];
+                });
+
+                return response()->json(['students' => $students]);
+            }
+
+            // Niveau 1 (base) : tous les inscrits à la classe, y compris ceux ayant continué en niveau N.
             $enrollments = $class->enrollments()
                 ->with('student.studentProfile')
                 ->where('status', 'active')

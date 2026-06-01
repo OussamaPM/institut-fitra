@@ -700,6 +700,7 @@ export default function StudentProfile() {
                     cancelled: { label: 'Annulée',   className: 'bg-gray-100 text-gray-500' },
                   };
                   const s = statusConfig[order.status] ?? { label: order.status, className: 'bg-gray-100 text-gray-600' };
+                  const isFree = order.payment_method === 'free' || order.total_amount === 0;
                   return (
                     <div key={order.id} className="border border-gray-100 rounded-xl overflow-hidden">
                       {/* En-tête commande */}
@@ -711,9 +712,13 @@ export default function StudentProfile() {
                           )}
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="font-bold text-secondary text-sm md:text-base">
-                            {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(order.total_amount)}
-                          </span>
+                          {isFree ? (
+                            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">Gratuit</span>
+                          ) : (
+                            <span className="font-bold text-secondary text-sm md:text-base">
+                              {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(order.total_amount)}
+                            </span>
+                          )}
                           <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${s.className}`}>{s.label}</span>
                         </div>
                       </div>
@@ -754,7 +759,9 @@ export default function StudentProfile() {
                               </div>
                               <div className="text-right flex-shrink-0 ml-2">
                                 <p className="text-xs md:text-sm font-medium text-secondary">
-                                  {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(payment.amount)}
+                                  {isFree
+                                    ? 'Gratuit'
+                                    : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(payment.amount)}
                                 </p>
                                 <p className={`text-xs font-medium ${ps.text}`}>{ps.label}</p>
                               </div>

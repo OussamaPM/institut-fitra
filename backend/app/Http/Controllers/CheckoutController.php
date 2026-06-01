@@ -299,6 +299,7 @@ class CheckoutController extends Controller
                     'total_amount' => $order->total_amount,
                     'installments_count' => $order->installments_count,
                     'status' => $order->status,
+                    'payment_method' => $order->payment_method,
                     'created_at' => $order->created_at,
                     'payments' => [],
                 ];

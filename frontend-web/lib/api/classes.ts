@@ -27,8 +27,10 @@ export const classesApi = {
   /**
    * Get students enrolled in a class
    */
-  getStudents: async (classId: number): Promise<ClassStudent[]> => {
-    const response = await apiClient.get<{ students: ClassStudent[] }>(`/classes/${classId}/students`);
+  getStudents: async (classId: number, level?: number): Promise<ClassStudent[]> => {
+    const response = await apiClient.get<{ students: ClassStudent[] }>(`/classes/${classId}/students`, {
+      params: level ? { level } : undefined,
+    });
     return response.data.students;
   },
 

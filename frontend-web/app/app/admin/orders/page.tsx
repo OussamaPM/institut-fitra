@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Card, Button, Badge, Input } from '@/components/ui';
 import { ordersApi, programsApi, classesApi } from '@/lib/api';
-import { Order, OrderStats, OrderStatus, PaymentMethod, Program, ClassModel } from '@/lib/types';
+import { Order, OrderStats, OrderStatus, PaymentMethod, Program, ClassModel, ProgramLevel, ClassStudent } from '@/lib/types';
 
 // Payment method icons
 const PaymentMethodIcon = ({ method }: { method: PaymentMethod }) => {
@@ -343,7 +343,17 @@ export default function OrdersPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div>
-                        <p className="font-medium text-secondary">{order.program?.name}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-secondary">{order.program?.name}</p>
+                          {order.level_number > 1 && (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-white text-[10px] font-bold">
+                                {order.level_number}
+                              </span>
+                              {order.program_level?.name || `Niveau ${order.level_number}`}
+                            </span>
+                          )}
+                        </div>
                         {order.class && (
                           <p className="text-sm text-gray-500">{order.class.name}</p>
                         )}
@@ -530,10 +540,14 @@ function AddManualOrderModal({ programs, onClose, onSuccess }: AddManualOrderMod
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [classes, setClasses] = useState<ClassModel[]>([]);
+  const [levels, setLevels] = useState<ProgramLevel[]>([]);
+  const [classStudents, setClassStudents] = useState<ClassStudent[]>([]);
 
   const [formData, setFormData] = useState({
     program_id: '',
     class_id: '',
+    program_level_id: '', // '' = niveau de base (niveau 1)
+    selected_student_id: '', // pour la montée de niveau : élève déjà inscrit choisi dans la liste
     customer_first_name: '',
     customer_last_name: '',
     customer_email: '',
@@ -544,9 +558,14 @@ function AddManualOrderModal({ programs, onClose, onSuccess }: AddManualOrderMod
     notes: '',
   });
 
-  // Get selected program price
+  const selectedLevel = formData.program_level_id
+    ? levels.find((l) => l.id === parseInt(formData.program_level_id))
+    : null;
+  const isLevelUp = !!selectedLevel;
+
+  // Get selected program price (ou prix du niveau si une montée de niveau est sélectionnée)
   const selectedProgram = formData.program_id ? programs.find(p => p.id === parseInt(formData.program_id)) : null;
-  const programPrice = selectedProgram ? Number(selectedProgram.price) : 0;
+  const programPrice = selectedLevel ? Number(selectedLevel.price) : (selectedProgram ? Number(selectedProgram.price) : 0);
 
   // Load classes when program changes
   useEffect(() => {
@@ -577,12 +596,57 @@ function AddManualOrderModal({ programs, onClose, onSuccess }: AddManualOrderMod
     loadClasses();
   }, [formData.program_id, programs]);
 
+  // Load levels activated + students enrolled on the selected class
+  useEffect(() => {
+    const loadClassData = async () => {
+      if (!formData.class_id) {
+        setLevels([]);
+        setClassStudents([]);
+        setFormData((prev) => ({ ...prev, program_level_id: '', selected_student_id: '' }));
+        return;
+      }
+      try {
+        const [cls, students] = await Promise.all([
+          classesApi.getById(parseInt(formData.class_id)),
+          classesApi.getStudents(parseInt(formData.class_id)).catch(() => []),
+        ]);
+        const activatedLevels = (cls.level_activations || [])
+          .map((a) => a.program_level)
+          .filter((l): l is ProgramLevel => !!l)
+          .sort((a, b) => a.level_number - b.level_number);
+        // dédupe par id
+        const unique = activatedLevels.filter(
+          (lvl, idx, arr) => arr.findIndex((l) => l.id === lvl.id) === idx
+        );
+        setLevels(unique);
+        setClassStudents(students);
+        setFormData((prev) => ({ ...prev, program_level_id: '', selected_student_id: '' }));
+      } catch (err) {
+        console.error('Error loading class data:', err);
+        setLevels([]);
+        setClassStudents([]);
+      }
+    };
+    loadClassData();
+  }, [formData.class_id]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!formData.program_id || !formData.class_id || !formData.customer_first_name || !formData.customer_last_name || !formData.customer_email || !formData.customer_gender) {
-      setError('Veuillez remplir tous les champs obligatoires (programme, classe, prénom, nom, email, genre).');
+    if (!formData.program_id || !formData.class_id) {
+      setError('Veuillez sélectionner un programme et une classe.');
+      return;
+    }
+
+    if (isLevelUp) {
+      // Montée de niveau : un élève déjà inscrit doit être choisi dans la liste
+      if (!formData.selected_student_id) {
+        setError('Veuillez sélectionner l\'élève à faire passer au niveau supérieur.');
+        return;
+      }
+    } else if (!formData.customer_first_name || !formData.customer_last_name || !formData.customer_email || !formData.customer_gender) {
+      setError('Veuillez remplir tous les champs obligatoires (prénom, nom, email, genre).');
       return;
     }
 
@@ -591,11 +655,12 @@ function AddManualOrderModal({ programs, onClose, onSuccess }: AddManualOrderMod
       await ordersApi.createManual({
         program_id: parseInt(formData.program_id),
         class_id: formData.class_id ? parseInt(formData.class_id) : undefined,
+        program_level_id: formData.program_level_id ? parseInt(formData.program_level_id) : undefined,
         customer_first_name: formData.customer_first_name,
         customer_last_name: formData.customer_last_name,
         customer_email: formData.customer_email,
         customer_phone: formData.customer_phone || undefined,
-        customer_gender: formData.customer_gender as 'male' | 'female',
+        customer_gender: formData.customer_gender ? (formData.customer_gender as 'male' | 'female') : undefined,
         payment_method: formData.payment_method,
         custom_amount: formData.payment_method !== 'free' && formData.custom_amount ? parseFloat(formData.custom_amount) : undefined,
         admin_notes: formData.notes || undefined,
@@ -616,6 +681,20 @@ function AddManualOrderModal({ programs, onClose, onSuccess }: AddManualOrderMod
     });
   };
 
+  // Sélection d'un élève existant (montée de niveau) → remplit les infos identité
+  const handleStudentSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const studentId = e.target.value;
+    const student = classStudents.find((s) => s.id.toString() === studentId);
+    setFormData((prev) => ({
+      ...prev,
+      selected_student_id: studentId,
+      customer_first_name: student?.first_name || '',
+      customer_last_name: student?.last_name || '',
+      customer_email: student?.email || '',
+      customer_phone: student?.student_profile?.phone || '',
+    }));
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -631,7 +710,9 @@ function AddManualOrderModal({ programs, onClose, onSuccess }: AddManualOrderMod
             </button>
           </div>
           <p className="text-sm text-gray-600 mt-2">
-            Créez une inscription manuelle. Un compte élève sera automatiquement créé.
+            {isLevelUp
+              ? 'Activez le niveau supérieur pour un élève déjà inscrit à cette classe.'
+              : 'Créez une inscription manuelle. Un compte élève sera automatiquement créé.'}
           </p>
         </div>
 
@@ -683,56 +764,113 @@ function AddManualOrderModal({ programs, onClose, onSuccess }: AddManualOrderMod
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Prénom *"
-              name="customer_first_name"
-              value={formData.customer_first_name}
-              onChange={handleChange}
-              required
-            />
-            <Input
-              label="Nom *"
-              name="customer_last_name"
-              value={formData.customer_last_name}
-              onChange={handleChange}
-              required
-            />
-          </div>
+          {/* Sélecteur de niveau (uniquement si la classe a des niveaux supérieurs activés) */}
+          {levels.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-secondary mb-1">
+                Niveau
+              </label>
+              <select
+                name="program_level_id"
+                value={formData.program_level_id}
+                onChange={handleChange}
+                className="input w-full"
+              >
+                <option value="">Niveau de base (niveau 1)</option>
+                {levels.map((lvl) => (
+                  <option key={lvl.id} value={lvl.id}>
+                    Niveau {lvl.level_number} — {lvl.name}
+                  </option>
+                ))}
+              </select>
+              {selectedLevel && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Montée de niveau : l&apos;élève doit déjà être inscrit au niveau de base de cette classe.
+                </p>
+              )}
+            </div>
+          )}
 
-          <Input
-            label="Email *"
-            type="email"
-            name="customer_email"
-            value={formData.customer_email}
-            onChange={handleChange}
-            required
-          />
+          {isLevelUp ? (
+            /* Montée de niveau : choisir un élève déjà inscrit à la classe */
+            <div>
+              <label className="block text-sm font-medium text-secondary mb-1">
+                Élève à faire passer au niveau {selectedLevel?.level_number} *
+              </label>
+              <select
+                name="selected_student_id"
+                value={formData.selected_student_id}
+                onChange={handleStudentSelect}
+                className="input w-full"
+                required
+              >
+                <option value="">Sélectionner un élève inscrit</option>
+                {classStudents.map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.first_name} {student.last_name} — {student.email}
+                  </option>
+                ))}
+              </select>
+              {classStudents.length === 0 && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Aucun élève inscrit au niveau de base de cette classe.
+                </p>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Prénom *"
+                  name="customer_first_name"
+                  value={formData.customer_first_name}
+                  onChange={handleChange}
+                  required
+                />
+                <Input
+                  label="Nom *"
+                  name="customer_last_name"
+                  value={formData.customer_last_name}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-secondary mb-1">
-              Genre *
-            </label>
-            <select
-              name="customer_gender"
-              value={formData.customer_gender}
-              onChange={handleChange}
-              className="input w-full"
-              required
-            >
-              <option value="">Sélectionner le genre</option>
-              <option value="male">Homme</option>
-              <option value="female">Femme</option>
-            </select>
-          </div>
+              <Input
+                label="Email *"
+                type="email"
+                name="customer_email"
+                value={formData.customer_email}
+                onChange={handleChange}
+                required
+              />
 
-          <Input
-            label="Téléphone"
-            type="tel"
-            name="customer_phone"
-            value={formData.customer_phone}
-            onChange={handleChange}
-          />
+              <div>
+                <label className="block text-sm font-medium text-secondary mb-1">
+                  Genre *
+                </label>
+                <select
+                  name="customer_gender"
+                  value={formData.customer_gender}
+                  onChange={handleChange}
+                  className="input w-full"
+                  required
+                >
+                  <option value="">Sélectionner le genre</option>
+                  <option value="male">Homme</option>
+                  <option value="female">Femme</option>
+                </select>
+              </div>
+
+              <Input
+                label="Téléphone"
+                type="tel"
+                name="customer_phone"
+                value={formData.customer_phone}
+                onChange={handleChange}
+              />
+            </>
+          )}
 
           {/* Méthode de paiement */}
           <div>
@@ -771,7 +909,7 @@ function AddManualOrderModal({ programs, onClose, onSuccess }: AddManualOrderMod
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Prix du programme : {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(programPrice)}
+                {isLevelUp ? 'Prix du niveau' : 'Prix du programme'} : {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(programPrice)}
                 {formData.custom_amount && parseFloat(formData.custom_amount) !== programPrice && (
                   <span className="text-amber-600 ml-1">
                     (montant personnalisé)
@@ -800,7 +938,7 @@ function AddManualOrderModal({ programs, onClose, onSuccess }: AddManualOrderMod
               Annuler
             </Button>
             <Button type="submit" disabled={isSubmitting} isLoading={isSubmitting}>
-              Créer l'inscription
+              {isLevelUp ? 'Activer le niveau' : 'Créer l\'inscription'}
             </Button>
           </div>
         </form>

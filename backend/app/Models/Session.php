@@ -117,4 +117,31 @@ class Session extends Model
     {
         return $this->hasOne(SessionSummary::class);
     }
+
+    /**
+     * Sessions visibles par un élève : il doit être inscrit à la classe ET avoir accès
+     * au niveau de la session.
+     *
+     * - Niveau de base (program_level_id = null) : accessible si inscrit à la classe.
+     * - Niveau supérieur : accessible uniquement si l'élève a une commande payée/partielle
+     *   pour CE niveau dans CETTE classe.
+     */
+    public function scopeVisibleToStudent($query, int $studentId)
+    {
+        return $query
+            ->whereHas('class.enrollments', function ($q) use ($studentId): void {
+                $q->where('student_id', $studentId)->where('status', 'active');
+            })
+            ->where(function ($q) use ($studentId): void {
+                $q->whereNull('class_sessions.program_level_id')
+                    ->orWhereExists(function ($sub) use ($studentId): void {
+                        $sub->selectRaw('1')
+                            ->from('orders')
+                            ->whereColumn('orders.program_level_id', 'class_sessions.program_level_id')
+                            ->whereColumn('orders.class_id', 'class_sessions.class_id')
+                            ->where('orders.student_id', $studentId)
+                            ->whereIn('orders.status', ['paid', 'partial']);
+                    });
+            });
+    }
 }

@@ -206,6 +206,11 @@ POST  /api/student/tracking/{id}/submit
 - Régénération du niveau de base (`deleteAllSessions`/`regenerate`) est **scopée à `program_level_id = null`** → éditer les dates d'une classe **n'efface pas** les sessions des niveaux supérieurs
 - `SessionController::index()` accepte `per_page` (défaut 15 ; frontend planning utilise `per_page: 500`)
 
+### Accès élève par niveau (sessions, supports, replays)
+- **Source de vérité** : `ProgramLevelService::accessibleLevelIds($studentId, $classId)` → `[null, ...ids des niveaux payés]`. Le niveau de base (`program_level_id = null`) est accessible dès l'inscription ; un niveau supérieur l'est seulement si l'élève a une commande **`paid`/`partial`** pour ce niveau dans cette classe.
+- **Scope** `Session::scopeVisibleToStudent($studentId)` : inscrit à la classe **ET** (niveau de base **OU** commande payée pour ce niveau) — sous-requête corrélée sur `orders` (class_id + program_level_id), gère le multi-classes.
+- Appliqué aux **5 points d'accès élève** : `SessionController::index` + `show`, `SessionMaterialController::studentIndex` + `sessionMaterials` + `download`. Un élève niveau 1 ne voit **ni ne télécharge** les sessions/supports/replays d'un niveau non payé.
+
 ### Replays vidéo
 - Backend calcule et retourne `replay_expires_at` et `replay_valid` (bool)
 - `replay_url` = URL embed du player (Bunny Stream ou Vimeo)
@@ -229,7 +234,12 @@ POST  /api/student/tracking/{id}/submit
 
 ### Commandes manuelles (admin)
 - `POST /api/admin/orders/manual` : `class_id` **obligatoire** — le `default_class_id` du programme n'est pas utilisé
-- Crée l'utilisateur élève si l'email n'existe pas, sinon vérifie qu'il n'est pas déjà inscrit à cette classe
+- **Niveau de base** (sans `program_level_id`) : crée l'utilisateur élève si l'email n'existe pas, sinon vérifie qu'il n'est pas déjà inscrit à cette classe ; crée l'inscription. `customer_gender` requis (`required_without:program_level_id`)
+- **Montée de niveau** (avec `program_level_id`) : l'élève doit déjà exister **et** être inscrit à la classe (niveau de base). Pas de nouvelle inscription, crée juste une commande avec `level_number` + `program_level_id` (statut `paid`). Refus si déjà une commande `paid`/`partial` pour ce niveau. Paiement `free` (gratuit) ou `cash` (espèces). Le frontend propose une **liste déroulante des élèves inscrits** à la classe au lieu de la saisie manuelle.
+- Conséquence côté élève : commande comptée par `ProgramLevelService` → le bloc de réinscription disparaît, ligne "Gratuit" affichée dans le suivi de paiement (`payment-history` renvoie `payment_method`)
+
+### Liste des élèves par niveau (admin)
+- `GET /api/classes/{id}/students?level=N` : **niveau 1** → tous les inscrits actifs (inclut ceux montés de niveau, historique conservé) ; **niveau 2+** → uniquement les élèves réinscrits (commande `paid`/`partial` pour ce niveau), avec `payment_status`. Page admin élèves : pills de sélection de niveau + stats adaptées (réinscrits / payé / en cours)
 
 ### Messagerie — règles élèves
 - Les élèves **ne peuvent pas initier** de conversation, seulement répondre si un admin leur a écrit
@@ -343,7 +353,7 @@ cd document-editor && npm run dev              # Port 3021
 
 ---
 
-## 11. État du Projet (17/05/2026)
+## 11. État du Projet (01/06/2026)
 
 ### ✅ Complété
 - Auth (login, register, forgot/reset password)
@@ -384,9 +394,11 @@ cd document-editor && npm run dev              # Port 3021
   - Marquage lu automatique, changement de statut (nouveau/en cours/résolu), suppression, bouton répondre par email
   - Lien ajouté dans `AdminSidebar` (groupe principal, avant Messagerie)
   - Les messages sont stockés en BDD (`contact_messages`), aucun email de notification n'est envoyé
-
-### ⏳ À finaliser (prod)
-- **Stripe live keys** : mettre `stripe_secret_key` + `stripe_webhook_secret` dans table `settings`, configurer webhook `https://api.institut-fitra.com/api/stripe/webhook`
+- **Gestion par niveau** (01/06/2026) :
+  - Page admin élèves de la classe : carte info en grille 3 colonnes (programme / niveau actuel / horaires de la classe), pills de **sélecteur de niveau** (niveau 1 = tous les inscrits, niveau 2+ = réinscrits uniquement avec stats payé/en cours)
+  - **Montée de niveau via l'ajout manuel** : sélecteur de niveau + liste déroulante des élèves inscrits, activation gratuite ou en espèces ; badge niveau sur la ligne de commande ; ligne "Gratuit" dans le suivi de paiement élève ; bloc de réinscription qui disparaît automatiquement
+  - **Accès élève cloisonné par niveau** : sessions, supports et replays d'un niveau supérieur invisibles/non téléchargeables tant que l'élève n'a pas payé ce niveau (`Session::scopeVisibleToStudent`, `ProgramLevelService::accessibleLevelIds`) — couvert par 3 tests dédiés
+- **Stripe live** (✅ configuré en prod) : clés + webhook actifs ; favicon validé sur Google Search Console
 
 ### ⏳ À développer
 - **Phase 6** : Espace Professeur (API ready, frontend absent)

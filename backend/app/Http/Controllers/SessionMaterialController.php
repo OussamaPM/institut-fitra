@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Models\Session;
 use App\Models\SessionMaterial;
 use App\Services\ImageOptimizerService;
+use App\Services\ProgramLevelService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,7 +16,10 @@ use Illuminate\Support\Facades\Storage;
 
 class SessionMaterialController extends Controller
 {
-    public function __construct(private ImageOptimizerService $imageOptimizer) {}
+    public function __construct(
+        private ImageOptimizerService $imageOptimizer,
+        private ProgramLevelService $programLevelService,
+    ) {}
 
     /**
      * Liste tous les supports (pour admin/teacher)
@@ -60,10 +64,10 @@ class SessionMaterialController extends Controller
         try {
             $user = $request->user();
 
+            // Supports des sessions visibles par l'élève (inscrit + niveau accessible)
             $materials = SessionMaterial::with(['session.class.program', 'uploader'])
-                ->whereHas('session.class.enrollments', function ($q) use ($user): void {
-                    $q->where('student_id', $user->id)
-                        ->where('status', 'active');
+                ->whereHas('session', function ($q) use ($user): void {
+                    $q->visibleToStudent($user->id);
                 })
                 ->orderBy('uploaded_at', 'desc')
                 ->get();
@@ -235,6 +239,13 @@ class SessionMaterialController extends Controller
                         'message' => 'Vous n\'êtes pas inscrit à cette classe.',
                     ], 403);
                 }
+
+                $accessibleLevelIds = $this->programLevelService->accessibleLevelIds($user->id, $session->class_id);
+                if (! in_array($session->program_level_id, $accessibleLevelIds, true)) {
+                    return response()->json([
+                        'message' => 'Vous n\'avez pas accès à ce niveau.',
+                    ], 403);
+                }
             } elseif ($user->role === 'teacher' && $session->teacher_id !== $user->id) {
                 return response()->json([
                     'message' => 'Vous n\'êtes pas autorisé à voir les supports de cette session.',
@@ -275,6 +286,13 @@ class SessionMaterialController extends Controller
                 if (! $enrolled) {
                     return response()->json([
                         'message' => 'Vous n\'êtes pas inscrit à cette classe.',
+                    ], 403);
+                }
+
+                $accessibleLevelIds = $this->programLevelService->accessibleLevelIds($user->id, $session->class_id);
+                if (! in_array($session->program_level_id, $accessibleLevelIds, true)) {
+                    return response()->json([
+                        'message' => 'Vous n\'avez pas accès à ce niveau.',
                     ], 403);
                 }
             } elseif ($user->role === 'teacher' && $session->teacher_id !== $user->id) {

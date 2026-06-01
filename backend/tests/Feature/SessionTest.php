@@ -6,7 +6,9 @@ namespace Tests\Feature;
 
 use App\Models\ClassModel;
 use App\Models\Enrollment;
+use App\Models\Order;
 use App\Models\Program;
+use App\Models\ProgramLevel;
 use App\Models\Session;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -228,6 +230,119 @@ class SessionTest extends TestCase
             ->getJson("/api/sessions/{$session->id}");
 
         $response->assertStatus(403);
+    }
+
+    /**
+     * Un élève inscrit (niveau de base) ne voit pas les sessions des niveaux qu'il n'a pas payés.
+     */
+    public function test_student_does_not_see_unpaid_level_sessions_in_index(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
+
+        $program = Program::factory()->create(['created_by' => $teacher->id]);
+        $class = ClassModel::factory()->create(['program_id' => $program->id]);
+        $level = ProgramLevel::create([
+            'program_id' => $program->id,
+            'level_number' => 2,
+            'name' => 'Niveau 2',
+            'price' => 100,
+            'max_installments' => 1,
+        ]);
+
+        Enrollment::factory()->create([
+            'student_id' => $student->id,
+            'class_id' => $class->id,
+            'status' => 'active',
+        ]);
+
+        // Session de base (visible) + session de niveau 2 (non visible sans paiement)
+        Session::factory()->create(['class_id' => $class->id, 'teacher_id' => $teacher->id, 'program_level_id' => null]);
+        Session::factory()->create(['class_id' => $class->id, 'teacher_id' => $teacher->id, 'program_level_id' => $level->id]);
+
+        $response = $this->actingAs($student)->getJson('/api/sessions');
+
+        $response->assertStatus(200)->assertJsonCount(1, 'sessions.data');
+    }
+
+    /**
+     * Une fois le niveau payé (paid/partial), l'élève voit les sessions de ce niveau.
+     */
+    public function test_student_sees_level_sessions_after_paying(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
+
+        $program = Program::factory()->create(['created_by' => $teacher->id]);
+        $class = ClassModel::factory()->create(['program_id' => $program->id]);
+        $level = ProgramLevel::create([
+            'program_id' => $program->id,
+            'level_number' => 2,
+            'name' => 'Niveau 2',
+            'price' => 100,
+            'max_installments' => 1,
+        ]);
+
+        Enrollment::factory()->create([
+            'student_id' => $student->id,
+            'class_id' => $class->id,
+            'status' => 'active',
+        ]);
+
+        Session::factory()->create(['class_id' => $class->id, 'teacher_id' => $teacher->id, 'program_level_id' => null]);
+        $levelSession = Session::factory()->create(['class_id' => $class->id, 'teacher_id' => $teacher->id, 'program_level_id' => $level->id]);
+
+        // Commande payée pour le niveau 2 dans cette classe
+        Order::factory()->create([
+            'student_id' => $student->id,
+            'program_id' => $program->id,
+            'class_id' => $class->id,
+            'program_level_id' => $level->id,
+            'level_number' => 2,
+            'status' => 'paid',
+        ]);
+
+        // L'index montre les 2 sessions
+        $this->actingAs($student)->getJson('/api/sessions')
+            ->assertStatus(200)->assertJsonCount(2, 'sessions.data');
+
+        // Le détail de la session de niveau est accessible
+        $this->actingAs($student)->getJson("/api/sessions/{$levelSession->id}")
+            ->assertStatus(200)->assertJsonPath('session.id', $levelSession->id);
+    }
+
+    /**
+     * Un élève sans le niveau payé reçoit 403 sur le détail d'une session de ce niveau.
+     */
+    public function test_student_cannot_view_unpaid_level_session_details(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
+
+        $program = Program::factory()->create(['created_by' => $teacher->id]);
+        $class = ClassModel::factory()->create(['program_id' => $program->id]);
+        $level = ProgramLevel::create([
+            'program_id' => $program->id,
+            'level_number' => 2,
+            'name' => 'Niveau 2',
+            'price' => 100,
+            'max_installments' => 1,
+        ]);
+
+        Enrollment::factory()->create([
+            'student_id' => $student->id,
+            'class_id' => $class->id,
+            'status' => 'active',
+        ]);
+
+        $levelSession = Session::factory()->create([
+            'class_id' => $class->id,
+            'teacher_id' => $teacher->id,
+            'program_level_id' => $level->id,
+        ]);
+
+        $this->actingAs($student)->getJson("/api/sessions/{$levelSession->id}")
+            ->assertStatus(403);
     }
 
     /**

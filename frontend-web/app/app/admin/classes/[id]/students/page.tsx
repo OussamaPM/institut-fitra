@@ -46,35 +46,44 @@ export default function ClassStudentsPage() {
   const [students, setStudents] = useState<ClassStudent[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<ClassStudent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLevel, setSelectedLevel] = useState(1);
 
   // Modals state
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [showChangeClassModal, setShowChangeClassModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<ClassStudent | null>(null);
 
-  const loadData = useCallback(async () => {
+  const loadClass = useCallback(async () => {
     try {
       setIsLoading(true);
       setError('');
 
-      // Charger les donnees de la classe
       const classResponse = await classesApi.getById(classId);
       setClassData(classResponse);
-
-      // Charger la liste des eleves
-      const studentsResponse = await classesApi.getStudents(classId);
-      setStudents(studentsResponse || []);
-      setFilteredStudents(studentsResponse || []);
     } catch (err: unknown) {
-      console.error('Failed to load data:', err);
+      console.error('Failed to load class:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors du chargement des donnees.';
       setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   }, [classId]);
+
+  const loadStudents = useCallback(async () => {
+    try {
+      setIsLoadingStudents(true);
+      const studentsResponse = await classesApi.getStudents(classId, selectedLevel);
+      setStudents(studentsResponse || []);
+    } catch (err: unknown) {
+      console.error('Failed to load students:', err);
+      setStudents([]);
+    } finally {
+      setIsLoadingStudents(false);
+    }
+  }, [classId, selectedLevel]);
 
   const filterStudents = useCallback(() => {
     if (!searchQuery) {
@@ -96,8 +105,12 @@ export default function ClassStudentsPage() {
   }, [searchQuery, students]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadClass();
+  }, [loadClass]);
+
+  useEffect(() => {
+    loadStudents();
+  }, [loadStudents]);
 
   useEffect(() => {
     filterStudents();
@@ -144,6 +157,17 @@ export default function ClassStudentsPage() {
       alert(errorMessage);
     }
   };
+
+  // Niveaux disponibles pour cette classe : niveau 1 (base) + niveaux activés, triés.
+  const availableLevels = [
+    { number: 1, name: 'Niveau de base' },
+    ...(classData?.level_activations || [])
+      .filter((a) => a.program_level)
+      .map((a) => ({ number: a.program_level!.level_number, name: a.program_level!.name }))
+      .sort((a, b) => a.number - b.number),
+  ].filter((lvl, idx, arr) => arr.findIndex((l) => l.number === lvl.number) === idx);
+
+  const isReinscriptionView = selectedLevel > 1;
 
   if (isLoading) {
     return (
@@ -193,38 +217,78 @@ export default function ClassStudentsPage() {
 
       {/* Bloc info classe : période actuelle + horaires */}
       {classData && (
-        <Card className="mb-6">
-          <div className="p-6">
-            <div className="flex items-start justify-between flex-wrap gap-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-gray-500 uppercase mb-1">Programme</p>
-                <p className="font-medium text-secondary">{classData.program?.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Classe : {formatDate(classData.start_date)} → {formatDate(classData.end_date)}
+        <Card className="mb-6 overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+            {/* Programme */}
+            <div className="p-6 flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Programme</p>
+                <p className="font-semibold text-secondary truncate">{classData.program?.name}</p>
+                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {formatDate(classData.start_date)} → {formatDate(classData.end_date)}
                 </p>
               </div>
-              {classData.current_period && (
-                <>
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 uppercase mb-1">Niveau actuel</p>
+            </div>
+
+            {/* Niveau actuel */}
+            <div className="p-6 flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Niveau actuel</p>
+                {classData.current_period ? (
+                  <>
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center justify-center w-7 h-7 bg-primary text-white rounded-full font-bold text-sm">
                         {classData.current_period.level_number}
                       </span>
-                      {classData.current_period.level_number > 1 && classData.current_period.level_name && (
-                        <span className="text-sm font-medium text-secondary">{classData.current_period.level_name}</span>
-                      )}
+                      <span className="font-semibold text-secondary text-sm">
+                        {classData.current_period.level_number === 1
+                          ? 'Niveau de base'
+                          : classData.current_period.level_name}
+                      </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
                       {formatDate(classData.current_period.start_date)} → {formatDate(classData.current_period.end_date)}
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 uppercase mb-1">Horaires</p>
-                    <p className="text-sm font-medium text-secondary">{formatSchedule(classData.current_period.schedule)}</p>
-                  </div>
-                </>
-              )}
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400">—</p>
+                )}
+              </div>
+            </div>
+
+            {/* Horaires du niveau actuel */}
+            <div className="p-6 flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Horaires</p>
+                {classData.current_period?.schedule ? (
+                  <p className="font-semibold text-secondary text-sm leading-relaxed">
+                    {formatSchedule(classData.current_period.schedule)}
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-400">Aucun horaire défini</p>
+                )}
+              </div>
             </div>
           </div>
         </Card>
@@ -233,30 +297,88 @@ export default function ClassStudentsPage() {
       {/* Statistiques */}
       {classData && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <div className="p-6">
-              <p className="text-sm text-gray-600 mb-1">Eleves inscrits</p>
-              <p className="text-3xl font-bold text-primary">{students.length}</p>
-            </div>
-          </Card>
-          <Card>
-            <div className="p-6">
-              <p className="text-sm text-gray-600 mb-1">Capacite maximale</p>
-              <p className="text-3xl font-bold text-secondary">
-                {classData.max_students || '∞'}
-              </p>
-            </div>
-          </Card>
-          <Card>
-            <div className="p-6">
-              <p className="text-sm text-gray-600 mb-1">Places restantes</p>
-              <p className="text-3xl font-bold text-success">
-                {classData.max_students
-                  ? classData.max_students - students.length
-                  : '∞'}
-              </p>
-            </div>
-          </Card>
+          {isReinscriptionView ? (
+            <>
+              <Card>
+                <div className="p-6">
+                  <p className="text-sm text-gray-600 mb-1">Eleves reinscrits</p>
+                  <p className="text-3xl font-bold text-primary">{students.length}</p>
+                </div>
+              </Card>
+              <Card>
+                <div className="p-6">
+                  <p className="text-sm text-gray-600 mb-1">Paye integralement</p>
+                  <p className="text-3xl font-bold text-success">
+                    {students.filter((s) => s.payment_status === 'paid').length}
+                  </p>
+                </div>
+              </Card>
+              <Card>
+                <div className="p-6">
+                  <p className="text-sm text-gray-600 mb-1">En cours de paiement</p>
+                  <p className="text-3xl font-bold text-warning">
+                    {students.filter((s) => s.payment_status === 'partial').length}
+                  </p>
+                </div>
+              </Card>
+            </>
+          ) : (
+            <>
+              <Card>
+                <div className="p-6">
+                  <p className="text-sm text-gray-600 mb-1">Eleves inscrits</p>
+                  <p className="text-3xl font-bold text-primary">{students.length}</p>
+                </div>
+              </Card>
+              <Card>
+                <div className="p-6">
+                  <p className="text-sm text-gray-600 mb-1">Capacite maximale</p>
+                  <p className="text-3xl font-bold text-secondary">
+                    {classData.max_students || '∞'}
+                  </p>
+                </div>
+              </Card>
+              <Card>
+                <div className="p-6">
+                  <p className="text-sm text-gray-600 mb-1">Places restantes</p>
+                  <p className="text-3xl font-bold text-success">
+                    {classData.max_students
+                      ? classData.max_students - students.length
+                      : '∞'}
+                  </p>
+                </div>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Sélecteur de niveau (uniquement si la classe a des niveaux supérieurs activés) */}
+      {availableLevels.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          {availableLevels.map((lvl) => {
+            const active = selectedLevel === lvl.number;
+            return (
+              <button
+                key={lvl.number}
+                onClick={() => setSelectedLevel(lvl.number)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors border ${
+                  active
+                    ? 'bg-primary text-white border-primary shadow-sm'
+                    : 'bg-white text-secondary border-gray-200 hover:border-primary/40 hover:bg-primary/5'
+                }`}
+              >
+                <span
+                  className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold ${
+                    active ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'
+                  }`}
+                >
+                  {lvl.number}
+                </span>
+                {lvl.number === 1 ? 'Niveau de base' : lvl.name}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -278,12 +400,18 @@ export default function ClassStudentsPage() {
           </div>
 
           {/* Table des eleves */}
-          {filteredStudents.length === 0 ? (
+          {isLoadingStudents ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600">Chargement...</p>
+            </div>
+          ) : filteredStudents.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-600">
                 {searchQuery
                   ? 'Aucun eleve trouve avec ces criteres.'
-                  : 'Aucun eleve inscrit dans cette classe.'}
+                  : isReinscriptionView
+                    ? 'Aucun eleve reinscrit a ce niveau pour le moment.'
+                    : 'Aucun eleve inscrit dans cette classe.'}
               </p>
             </div>
           ) : (
@@ -301,7 +429,7 @@ export default function ClassStudentsPage() {
                       Telephone
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">
-                      Date inscription
+                      {isReinscriptionView ? 'Date reinscription' : 'Date inscription'}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">
                       Statut
@@ -338,9 +466,15 @@ export default function ClassStudentsPage() {
                           {new Date(student.enrolled_at).toLocaleDateString('fr-FR')}
                         </td>
                         <td className="px-4 py-4">
-                          <Badge variant={student.enrollment_status === 'active' ? 'success' : 'warning'}>
-                            {student.enrollment_status === 'active' ? 'Actif' : student.enrollment_status}
-                          </Badge>
+                          {isReinscriptionView && student.payment_status ? (
+                            <Badge variant={student.payment_status === 'paid' ? 'success' : 'warning'}>
+                              {student.payment_status === 'paid' ? 'Paye' : 'En cours de paiement'}
+                            </Badge>
+                          ) : (
+                            <Badge variant={student.enrollment_status === 'active' ? 'success' : 'warning'}>
+                              {student.enrollment_status === 'active' ? 'Actif' : student.enrollment_status}
+                            </Badge>
+                          )}
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center justify-end gap-2">

@@ -8,6 +8,7 @@ use App\Models\Enrollment;
 use App\Models\Order;
 use App\Models\OrderPayment;
 use App\Models\Program;
+use App\Models\ProgramLevel;
 use App\Models\StudentProfile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -28,6 +29,7 @@ class OrderController extends Controller
             $query = Order::with([
                 'student.studentProfile',
                 'program',
+                'programLevel',
                 'class',
                 'payments.recoveryPayment', // Inclure les paiements de régularisation
             ])
@@ -154,10 +156,11 @@ class OrderController extends Controller
         $request->validate([
             'program_id' => 'required|exists:programs,id',
             'class_id' => 'required|exists:classes,id',
+            'program_level_id' => 'nullable|exists:program_levels,id',
             'customer_email' => 'required|email',
             'customer_first_name' => 'required|string|max:255',
             'customer_last_name' => 'required|string|max:255',
-            'customer_gender' => 'required|in:male,female',
+            'customer_gender' => 'nullable|required_without:program_level_id|in:male,female',
             'payment_method' => 'required|in:free,cash,transfer',
             'custom_amount' => 'nullable|numeric|min:0',
             'admin_notes' => 'nullable|string',
@@ -167,7 +170,79 @@ class OrderController extends Controller
             return DB::transaction(function () use ($request) {
                 $program = Program::findOrFail($request->program_id);
                 $classId = (int) $request->class_id;
+                $paymentMethod = $request->payment_method;
 
+                // === Cas montée de niveau (niveau 2+) ===
+                // L'élève est déjà inscrit à la classe (niveau de base) et on le fait passer
+                // à un niveau supérieur. Pas de nouvelle inscription, juste une commande de niveau.
+                if ($request->filled('program_level_id')) {
+                    $level = ProgramLevel::where('program_id', $program->id)
+                        ->findOrFail($request->program_level_id);
+
+                    $student = User::where('email', $request->customer_email)->first();
+                    if (! $student) {
+                        return response()->json([
+                            'message' => 'Aucun élève avec cet email. Inscrivez-le d\'abord au niveau de base.',
+                        ], 422);
+                    }
+
+                    // L'élève doit déjà être inscrit à cette classe
+                    $enrolled = Enrollment::where('student_id', $student->id)
+                        ->where('class_id', $classId)
+                        ->exists();
+                    if (! $enrolled) {
+                        return response()->json([
+                            'message' => 'Cet élève n\'est pas inscrit à cette classe. Inscrivez-le d\'abord au niveau de base.',
+                        ], 422);
+                    }
+
+                    // Pas déjà une commande payée/partielle pour ce niveau dans cette classe
+                    $alreadyOrdered = Order::where('student_id', $student->id)
+                        ->where('class_id', $classId)
+                        ->where('program_level_id', $level->id)
+                        ->whereIn('status', ['paid', 'partial'])
+                        ->exists();
+                    if ($alreadyOrdered) {
+                        return response()->json([
+                            'message' => 'Cet élève est déjà inscrit à ce niveau pour cette classe.',
+                        ], 422);
+                    }
+
+                    $amount = $paymentMethod === 'free' ? 0 : ($request->custom_amount ?? $level->price);
+
+                    $order = Order::create([
+                        'student_id' => $student->id,
+                        'program_id' => $program->id,
+                        'class_id' => $classId,
+                        'level_number' => $level->level_number,
+                        'program_level_id' => $level->id,
+                        'customer_email' => $request->customer_email,
+                        'customer_first_name' => $request->customer_first_name,
+                        'customer_last_name' => $request->customer_last_name,
+                        'total_amount' => $amount,
+                        'installments_count' => 1,
+                        'payment_method' => $paymentMethod,
+                        'status' => 'paid',
+                        'admin_notes' => $request->admin_notes,
+                    ]);
+
+                    OrderPayment::create([
+                        'order_id' => $order->id,
+                        'amount' => $amount,
+                        'installment_number' => 1,
+                        'status' => 'succeeded',
+                        'paid_at' => now(),
+                    ]);
+
+                    $order->load(['student.studentProfile', 'program', 'programLevel', 'class', 'payments']);
+
+                    return response()->json([
+                        'message' => 'Élève inscrit au niveau '.$level->level_number.' avec succès.',
+                        'order' => $order,
+                    ], 201);
+                }
+
+                // === Cas niveau de base (niveau 1) ===
                 // Vérifier si l'email existe déjà
                 $existingUser = User::where('email', $request->customer_email)->first();
 
@@ -204,7 +279,6 @@ class OrderController extends Controller
                 }
 
                 // Déterminer le montant (personnalisé ou prix du programme)
-                $paymentMethod = $request->payment_method;
                 $amount = $paymentMethod === 'free' ? 0 : ($request->custom_amount ?? $program->price);
 
                 // Créer la commande
