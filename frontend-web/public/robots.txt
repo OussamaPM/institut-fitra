@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://institut-fitra.com/sitemap.xml

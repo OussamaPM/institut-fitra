@@ -28,6 +28,7 @@ export const metadata: Metadata = {
   title: "Institut Fitra",
   description:
     "L'Institut FITRA est un institut d'apprentissage en ligne spécialisé dans l'enseignement des sciences islamiques, pensé pour rendre le savoir accessible à chacun.",
+  manifest: "/site.webmanifest",
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
