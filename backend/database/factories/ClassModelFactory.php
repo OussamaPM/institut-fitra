@@ -37,6 +37,10 @@ class ClassModelFactory extends Factory
             'end_date' => $endDate,
             'max_students' => $this->faker->randomElement([15, 20, 25, 30, null]), // null = illimité
             'status' => 'planned',
+            'schedule' => [
+                ['day' => 'lundi', 'start_time' => '09:00', 'end_time' => '11:00'],
+                ['day' => 'mercredi', 'start_time' => '14:00', 'end_time' => '16:00'],
+            ],
         ];
     }
 

@@ -81,8 +81,8 @@ Program (template)
 | `users` | id, email, password, role, first_name, last_name |
 | `student_profiles` | user_id, phone, date_of_birth, address, city, country, gender, profile_photo |
 | `teacher_profiles` | user_id, phone, specialization, bio, gender, profile_photo |
-| `programs` | name, description, teacher_id, schedule (JSON), price, max_installments, default_class_id |
-| `classes` | program_id, name, academic_year, start_date, end_date, max_students, status, zoom_link, **parent_class_id** |
+| `programs` | name, description, teacher_id, price, max_installments, default_class_id _(plus de `schedule` : l'emploi du temps est porté par la classe)_ |
+| `classes` | program_id, name, academic_year, start_date, end_date, max_students, status, zoom_link, parent_class_id, **schedule (JSON)** |
 | `class_sessions` | class_id, **program_level_id** (nullable — null = niveau 1/base), teacher_id, title, scheduled_at, duration_minutes, status, replay_url, replay_validity_days, replay_added_at, color |
 | `enrollments` | student_id, class_id, status, enrolled_at |
 | `attendances` | session_id, student_id, attended, duration_minutes |
@@ -97,7 +97,7 @@ Program (template)
 | `program_level_activations` | program_level_id, class_id, **start_date, end_date**, activated_by, activated_at |
 | `settings` | key, value (dont stripe_secret_key, stripe_webhook_secret) |
 
-**Format schedule** : `[{"day": "lundi", "start_time": "10:00", "end_time": "12:00"}]`
+**Format schedule** : `[{"day": "lundi", "start_time": "10:00", "end_time": "12:00"}]` — porté par `classes.schedule` (niveau 1) et `program_levels.schedule` / `program_level_activations.schedule` (niveaux 2+). Le programme **n'a plus** d'emploi du temps.
 
 ---
 
@@ -201,10 +201,15 @@ POST  /api/student/tracking/{id}/submit
 ## 6. Comportements Importants
 
 ### Sessions — génération automatique
-- **Niveau 1 (base)** : création/modification des dates d'une classe → `generateSessionsForClass` génère les sessions selon le `schedule` du **programme** entre les dates de la classe (`program_level_id = null`)
+- **Niveau 1 (base)** : création/modification d'une classe → `generateSessionsForClass` génère les sessions selon le `schedule` de la **classe** (`classes.schedule`) entre les dates de la classe (`program_level_id = null`). L'emploi du temps est saisi dans le formulaire de classe.
 - **Niveaux 2+** : à l'activation d'un niveau pour une classe (avec dates) → `generateSessionsForLevelActivation` génère les sessions selon le `schedule` **du niveau** entre les dates de l'activation (`program_level_id = level->id`)
-- Régénération du niveau de base (`deleteAllSessions`/`regenerate`) est **scopée à `program_level_id = null`** → éditer les dates d'une classe **n'efface pas** les sessions des niveaux supérieurs
+- Régénération du niveau de base (`deleteAllSessions`/`regenerate`) est **scopée à `program_level_id = null`** → éditer une classe **n'efface pas** les sessions des niveaux supérieurs. La régénération se déclenche si les dates, le programme **ou l'emploi du temps** de la classe changent.
 - `SessionController::index()` accepte `per_page` (défaut 15 ; frontend planning utilise `per_page: 500`)
+
+### Emploi du temps — porté par la classe
+- Le **programme n'a plus d'emploi du temps**. Les jours/heures de cours sont saisis dans le **formulaire de classe** (création + édition) et stockés dans `classes.schedule`.
+- Les **pages de description du programme** (admin `/admin/programs/[id]`, vitrine `/programs/[id]`, `ProgramCard`, liste admin) affichent l'emploi du temps de la **classe d'affectation par défaut** (`program.default_class.schedule`). Changer `default_class_id` change les horaires affichés. `ProgramController::index/show` chargent `defaultClass`.
+- `ClassModel::current_period` (accessor) renvoie au niveau 1 le `schedule` de la classe ; la page admin élèves de la classe et la liste des classes l'utilisent inchangées.
 
 ### Accès élève par niveau (sessions, supports, replays)
 - **Source de vérité** : `ProgramLevelService::accessibleLevelIds($studentId, $classId)` → `[null, ...ids des niveaux payés]`. Le niveau de base (`program_level_id = null`) est accessible dès l'inscription ; un niveau supérieur l'est seulement si l'élève a une commande **`paid`/`partial`** pour ce niveau dans cette classe.
@@ -289,10 +294,10 @@ Polices : **Playfair Display** (titres) | **Inter** (corps) | **Amiri** (arabe)
 
 ```typescript
 User       { id, email, role: 'student'|'teacher'|'admin', first_name, last_name, student_profile?, teacher_profile? }
-Program    { id, name, teacher_id, schedule: ProgramSchedule[], price, max_installments, default_class_id?, levels?, levels_count? }
+Program    { id, name, teacher_id, price, max_installments, default_class_id?, default_class?, levels?, levels_count? }  // plus de schedule
 ProgramLevel { id, program_id, level_number (≥2), name, price, max_installments, schedule?, teacher_id?, is_active (calculé), activations? }
 ProgramLevelActivation { id, program_level_id, class_id, activated_by, activated_at }
-ClassModel { id, program_id, name, academic_year, start_date, end_date, status, zoom_link?, parent_class_id?, parent_class?, child_classes? }
+ClassModel { id, program_id, name, academic_year, start_date, end_date, status, zoom_link?, schedule: ProgramSchedule[], parent_class_id?, parent_class?, child_classes?, current_period? }
 Session    { id, class_id, teacher_id, title, scheduled_at, duration_minutes, status, replay_url?, replay_validity_days?, replay_valid?, replay_expires_at?, class?, materials? }
 Order      { id, student_id, program_id, class_id, total_amount, installments_count, payment_method, status, level_number?, program_level_id? }
 OrderPayment { id, order_id, amount, installment_number, status, scheduled_at, paid_at, recovery_for_payment_id?, is_recovery_payment?, is_recovered? }

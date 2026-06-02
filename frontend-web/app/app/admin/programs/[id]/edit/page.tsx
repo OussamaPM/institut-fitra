@@ -44,10 +44,6 @@ export default function EditProgramPage() {
     default_class_id: '',
     active: true,
   });
-  const [schedule, setSchedule] = useState<ProgramSchedule[]>([
-    { day: 'lundi', start_time: '09:00', end_time: '11:00' },
-  ]);
-
   // États pour les niveaux
   const [levels, setLevels] = useState<ProgramLevel[]>([]);
   const [expandedLevels, setExpandedLevels] = useState<Set<number>>(new Set());
@@ -89,10 +85,6 @@ export default function EditProgramPage() {
           default_class_id: programData.default_class_id?.toString() || '',
           active: programData.active,
         });
-
-        if (programData.schedule && programData.schedule.length > 0) {
-          setSchedule(programData.schedule);
-        }
       } catch (err: any) {
         console.error('Failed to load program:', err);
         setError('Impossible de charger le programme.');
@@ -112,22 +104,6 @@ export default function EditProgramPage() {
     });
   };
 
-  const handleScheduleChange = (index: number, field: keyof ProgramSchedule, value: string) => {
-    const newSchedule = [...schedule];
-    newSchedule[index] = { ...newSchedule[index], [field]: value };
-    setSchedule(newSchedule);
-  };
-
-  const addScheduleSlot = () => {
-    setSchedule([...schedule, { day: 'lundi', start_time: '09:00', end_time: '11:00' }]);
-  };
-
-  const removeScheduleSlot = (index: number) => {
-    if (schedule.length > 1) {
-      setSchedule(schedule.filter((_, i) => i !== index));
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -135,11 +111,6 @@ export default function EditProgramPage() {
     // Validation
     if (!formData.name || !formData.description || !formData.price || !formData.teacher_id || !formData.subject) {
       setError('Veuillez remplir tous les champs obligatoires.');
-      return;
-    }
-
-    if (schedule.length === 0) {
-      setError('Veuillez ajouter au moins un horaire.');
       return;
     }
 
@@ -152,7 +123,6 @@ export default function EditProgramPage() {
         max_installments: parseInt(formData.max_installments),
         teacher_id: parseInt(formData.teacher_id),
         default_class_id: formData.default_class_id ? parseInt(formData.default_class_id) : undefined,
-        schedule,
       };
 
       await programsApi.update(programId, dataToSend);
@@ -582,84 +552,6 @@ export default function EditProgramPage() {
                   Aucune classe n'est associée à ce programme. Créez d'abord une classe pour pouvoir la définir par défaut.
                 </p>
               )}
-            </div>
-          </div>
-        </Card>
-
-        {/* Emploi du temps */}
-        <Card className="mb-6">
-          <div className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-playfair text-xl font-semibold text-secondary">
-                Emploi du temps *
-              </h2>
-              <Button type="button" variant="outline" size="sm" onClick={addScheduleSlot} disabled={isSaving}>
-                + Ajouter un horaire
-              </Button>
-            </div>
-
-            <div className="space-y-4">
-              {schedule.map((slot, index) => (
-                <div key={index} className="flex items-end gap-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-secondary mb-1">
-                      Jour
-                    </label>
-                    <select
-                      value={slot.day}
-                      onChange={(e) => handleScheduleChange(index, 'day', e.target.value)}
-                      className="input w-full"
-                      disabled={isSaving}
-                    >
-                      <option value="lundi">Lundi</option>
-                      <option value="mardi">Mardi</option>
-                      <option value="mercredi">Mercredi</option>
-                      <option value="jeudi">Jeudi</option>
-                      <option value="vendredi">Vendredi</option>
-                      <option value="samedi">Samedi</option>
-                      <option value="dimanche">Dimanche</option>
-                    </select>
-                  </div>
-
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-secondary mb-1">
-                      Heure de début
-                    </label>
-                    <input
-                      type="time"
-                      value={slot.start_time}
-                      onChange={(e) => handleScheduleChange(index, 'start_time', e.target.value)}
-                      className="input w-full"
-                      disabled={isSaving}
-                    />
-                  </div>
-
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-secondary mb-1">
-                      Heure de fin
-                    </label>
-                    <input
-                      type="time"
-                      value={slot.end_time}
-                      onChange={(e) => handleScheduleChange(index, 'end_time', e.target.value)}
-                      className="input w-full"
-                      disabled={isSaving}
-                    />
-                  </div>
-
-                  {schedule.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeScheduleSlot(index)}
-                      disabled={isSaving}
-                    >
-                      Supprimer
-                    </Button>
-                  )}
-                </div>
-              ))}
             </div>
           </div>
         </Card>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, Button, Input } from '@/components/ui';
 import { classesApi } from '@/lib/api/classes';
 import { programsApi } from '@/lib/api/programs';
-import { Program, ClassModel } from '@/lib/types';
+import { Program, ClassModel, ProgramSchedule } from '@/lib/types';
 
 export default function CreateClassPage() {
   const router = useRouter();
@@ -25,10 +25,29 @@ export default function CreateClassPage() {
     zoom_link: '',
     parent_class_id: '',
   });
+  const [schedule, setSchedule] = useState<ProgramSchedule[]>([
+    { day: 'lundi', start_time: '09:00', end_time: '11:00' },
+  ]);
 
   useEffect(() => {
     loadPrograms();
   }, []);
+
+  const handleScheduleChange = (index: number, field: keyof ProgramSchedule, value: string) => {
+    const newSchedule = [...schedule];
+    newSchedule[index] = { ...newSchedule[index], [field]: value };
+    setSchedule(newSchedule);
+  };
+
+  const addScheduleSlot = () => {
+    setSchedule([...schedule, { day: 'lundi', start_time: '09:00', end_time: '11:00' }]);
+  };
+
+  const removeScheduleSlot = (index: number) => {
+    if (schedule.length > 1) {
+      setSchedule(schedule.filter((_, i) => i !== index));
+    }
+  };
 
   const loadPrograms = async () => {
     try {
@@ -54,6 +73,11 @@ export default function CreateClassPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (schedule.length === 0) {
+      setError('Veuillez ajouter au moins un horaire de cours.');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
 
@@ -68,6 +92,7 @@ export default function CreateClassPage() {
         status: formData.status as 'planned' | 'ongoing' | 'completed' | 'cancelled',
         zoom_link: formData.zoom_link || undefined,
         parent_class_id: hasParent && formData.parent_class_id ? parseInt(formData.parent_class_id) : undefined,
+        schedule,
       };
 
       await classesApi.create(payload);
@@ -237,6 +262,79 @@ export default function CreateClassPage() {
                 onChange={handleChange}
                 required
               />
+            </div>
+          </div>
+
+          {/* Emploi du temps */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-secondary">
+                Jours et heures de cours <span className="text-error">*</span>
+              </label>
+              <Button type="button" variant="outline" size="sm" onClick={addScheduleSlot} disabled={isLoading}>
+                + Ajouter un horaire
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              Les sessions de la classe sont générées automatiquement selon ces créneaux (fuseau Europe/Paris).
+            </p>
+
+            <div className="space-y-3">
+              {schedule.map((slot, index) => (
+                <div key={index} className="flex items-end gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-secondary mb-1">Jour</label>
+                    <select
+                      value={slot.day}
+                      onChange={(e) => handleScheduleChange(index, 'day', e.target.value)}
+                      className="input w-full"
+                      disabled={isLoading}
+                    >
+                      <option value="lundi">Lundi</option>
+                      <option value="mardi">Mardi</option>
+                      <option value="mercredi">Mercredi</option>
+                      <option value="jeudi">Jeudi</option>
+                      <option value="vendredi">Vendredi</option>
+                      <option value="samedi">Samedi</option>
+                      <option value="dimanche">Dimanche</option>
+                    </select>
+                  </div>
+
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-secondary mb-1">Heure de début</label>
+                    <input
+                      type="time"
+                      value={slot.start_time}
+                      onChange={(e) => handleScheduleChange(index, 'start_time', e.target.value)}
+                      className="input w-full"
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-secondary mb-1">Heure de fin</label>
+                    <input
+                      type="time"
+                      value={slot.end_time}
+                      onChange={(e) => handleScheduleChange(index, 'end_time', e.target.value)}
+                      className="input w-full"
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  {schedule.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeScheduleSlot(index)}
+                      disabled={isLoading}
+                    >
+                      Supprimer
+                    </Button>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 

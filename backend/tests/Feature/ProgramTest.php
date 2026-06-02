@@ -119,7 +119,7 @@ class ProgramTest extends TestCase
             ->postJson('/api/programs', []);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['name', 'description', 'subject', 'price', 'max_installments', 'teacher_id', 'schedule']);
+            ->assertJsonValidationErrors(['name', 'description', 'subject', 'price', 'max_installments', 'teacher_id']);
     }
 
     /**

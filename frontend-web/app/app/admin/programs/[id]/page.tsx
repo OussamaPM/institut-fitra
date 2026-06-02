@@ -429,21 +429,30 @@ export default function ProgramDetailsPage() {
             </div>
           </Card>
 
-          {/* Emploi du temps compact */}
+          {/* Emploi du temps compact (issu de la classe d'affectation par défaut) */}
           <Card>
             <div className="p-4">
               <h2 className="font-semibold text-secondary mb-3">Emploi du temps</h2>
-              {program.schedule && program.schedule.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {program.schedule.map((slot, index) => (
-                    <div key={index} className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm">
-                      <span className="font-medium text-secondary">{getDayLabel(slot.day)}</span>
-                      <span className="text-gray-500">{slot.start_time} - {slot.end_time}</span>
-                    </div>
-                  ))}
-                </div>
+              {program.default_class?.schedule && program.default_class.schedule.length > 0 ? (
+                <>
+                  <p className="text-xs text-gray-400 mb-2">
+                    Classe par défaut : {program.default_class.name}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {program.default_class.schedule.map((slot, index) => (
+                      <div key={index} className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm">
+                        <span className="font-medium text-secondary">{getDayLabel(slot.day)}</span>
+                        <span className="text-gray-500">{slot.start_time} - {slot.end_time}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
-                <p className="text-sm text-gray-500">Aucun horaire défini</p>
+                <p className="text-sm text-gray-500">
+                  {program.default_class_id
+                    ? 'Aucun horaire défini pour la classe par défaut.'
+                    : 'Définissez une classe d’affectation par défaut pour afficher son emploi du temps.'}
+                </p>
               )}
             </div>
           </Card>

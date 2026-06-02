@@ -150,6 +150,7 @@ class ClassTest extends TestCase
             'end_date' => now()->addMonths(10)->format('Y-m-d'),
             'max_students' => 25,
             'status' => 'planned',
+            'schedule' => [['day' => 'lundi', 'start_time' => '09:00', 'end_time' => '11:00']],
         ];
 
         $response = $this->actingAs($teacher, 'sanctum')
@@ -196,6 +197,7 @@ class ClassTest extends TestCase
             'start_date' => now()->addMonth()->format('Y-m-d'),
             'end_date' => now()->addMonths(10)->format('Y-m-d'),
             'status' => 'planned',
+            'schedule' => [['day' => 'lundi', 'start_time' => '09:00', 'end_time' => '11:00']],
         ];
 
         $response = $this->actingAs($teacher1, 'sanctum')
@@ -235,6 +237,7 @@ class ClassTest extends TestCase
             'end_date' => now()->addMonths(10)->format('Y-m-d'),
             'max_students' => 30,
             'status' => 'planned',
+            'schedule' => [['day' => 'lundi', 'start_time' => '09:00', 'end_time' => '11:00']],
         ];
 
         $response = $this->actingAs($admin, 'sanctum')

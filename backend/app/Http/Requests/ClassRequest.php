@@ -34,6 +34,10 @@ class ClassRequest extends FormRequest
             'status' => ['sometimes', 'in:planned,ongoing,completed,cancelled'],
             'zoom_link' => ['nullable', 'url', 'max:500'],
             'parent_class_id' => ['nullable', 'integer', 'exists:classes,id'],
+            'schedule' => [$isUpdate ? 'sometimes' : 'required', 'array', 'min:1'],
+            'schedule.*.day' => ['required', 'string', 'in:lundi,mardi,mercredi,jeudi,vendredi,samedi,dimanche'],
+            'schedule.*.start_time' => ['required', 'date_format:H:i'],
+            'schedule.*.end_time' => ['required', 'date_format:H:i', 'after:schedule.*.start_time'],
         ];
     }
 
@@ -63,6 +67,16 @@ class ClassRequest extends FormRequest
             'status.in' => 'Le statut doit être : planned, ongoing, completed ou cancelled.',
             'zoom_link.url' => 'Le lien Zoom doit être une URL valide.',
             'zoom_link.max' => 'Le lien Zoom ne peut pas dépasser 500 caractères.',
+            'schedule.required' => 'L\'emploi du temps est requis.',
+            'schedule.array' => 'L\'emploi du temps doit être un tableau.',
+            'schedule.min' => 'L\'emploi du temps doit contenir au moins un horaire.',
+            'schedule.*.day.required' => 'Le jour est requis pour chaque horaire.',
+            'schedule.*.day.in' => 'Le jour doit être valide (lundi-dimanche).',
+            'schedule.*.start_time.required' => 'L\'heure de début est requise.',
+            'schedule.*.start_time.date_format' => 'L\'heure de début doit être au format HH:MM.',
+            'schedule.*.end_time.required' => 'L\'heure de fin est requise.',
+            'schedule.*.end_time.date_format' => 'L\'heure de fin doit être au format HH:MM.',
+            'schedule.*.end_time.after' => 'L\'heure de fin doit être après l\'heure de début.',
         ];
     }
 }

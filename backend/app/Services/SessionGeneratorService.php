@@ -43,15 +43,15 @@ class SessionGeneratorService
         $class->load('program');
         $program = $class->program;
 
-        if (! $program->schedule || count($program->schedule) === 0) {
-            throw new \Exception('Le programme n\'a pas d\'emploi du temps défini.');
+        if (! $class->schedule || count($class->schedule) === 0) {
+            throw new \Exception('La classe n\'a pas d\'emploi du temps défini.');
         }
 
         return $this->generateSessions(
             classId: $class->id,
             programLevelId: null,
             teacherId: $program->teacher_id,
-            schedule: $program->schedule,
+            schedule: $class->schedule,
             startDate: Carbon::parse($class->start_date),
             endDate: Carbon::parse($class->end_date),
             titlePrefix: $program->name,

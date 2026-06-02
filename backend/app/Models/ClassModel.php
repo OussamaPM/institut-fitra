@@ -24,12 +24,14 @@ class ClassModel extends Model
         'status',
         'zoom_link',
         'parent_class_id',
+        'schedule',
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
         'max_students' => 'integer',
+        'schedule' => 'array',
     ];
 
     /**
@@ -156,7 +158,7 @@ class ClassModel extends Model
         return [
             'level_number' => 1,
             'level_name' => $this->program?->name,
-            'schedule' => $this->program?->schedule,
+            'schedule' => $this->schedule,
             'start_date' => $this->start_date?->toDateString(),
             'end_date' => $this->end_date?->toDateString(),
         ];

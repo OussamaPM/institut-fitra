@@ -174,18 +174,20 @@ class ClassController extends Controller
                 ], 403);
             }
 
-            // Vérifier si les dates ont changé
+            // Vérifier si les dates, le programme ou l'emploi du temps ont changé
             $oldStartDate = $class->start_date;
             $oldEndDate = $class->end_date;
             $oldProgramId = $class->program_id;
+            $oldSchedule = $class->schedule;
 
             $class->update($request->validated());
 
-            // Régénérer les sessions si les dates ou le programme ont changé
+            // Régénérer les sessions si les dates, le programme ou l'emploi du temps ont changé
             $datesChanged = (
                 $class->start_date != $oldStartDate ||
                 $class->end_date != $oldEndDate ||
-                $class->program_id != $oldProgramId
+                $class->program_id != $oldProgramId ||
+                $class->schedule != $oldSchedule
             );
 
             $sessionsCount = 0;

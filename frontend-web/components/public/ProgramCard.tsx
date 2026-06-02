@@ -12,8 +12,8 @@ export default function ProgramCard({ program }: ProgramCardProps) {
     currency: 'EUR',
   }).format(parseFloat(program.price));
 
-  // Extraire les jours de cours du schedule
-  const courseDays = program.schedule?.map((s) => s.day).join(', ') || 'Non défini';
+  // Extraire les jours de cours depuis la classe d'affectation par défaut
+  const courseDays = program.default_class?.schedule?.map((s) => s.day).join(', ') || 'Non défini';
 
   return (
     <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">

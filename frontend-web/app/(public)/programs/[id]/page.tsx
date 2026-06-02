@@ -260,12 +260,12 @@ export default function ProgramDetailPage() {
                   </div>
                 )}
 
-                {/* Horaires */}
-                {program.schedule && program.schedule.length > 0 && (
+                {/* Horaires (issus de la classe d'affectation par défaut) */}
+                {program.default_class?.schedule && program.default_class.schedule.length > 0 && (
                   <div>
                     <h3 className="font-semibold text-secondary mb-2 sm:mb-3 text-sm sm:text-base">Horaires des cours</h3>
                     <div className="space-y-2">
-                      {program.schedule.map((slot, index) => (
+                      {program.default_class.schedule.map((slot, index) => (
                         <div
                           key={index}
                           className="flex items-center justify-between p-2.5 sm:p-3 bg-background rounded-lg"

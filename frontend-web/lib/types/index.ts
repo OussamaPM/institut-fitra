@@ -88,7 +88,8 @@ export interface Program {
   active: boolean;
   created_by: number;
   teacher_id: number;
-  schedule: ProgramSchedule[];
+  /** @deprecated L'emploi du temps est désormais porté par la classe (ClassModel.schedule) */
+  schedule?: ProgramSchedule[];
   subject: string;
   subject_description?: string;
   enrollment_conditions?: string;
@@ -170,6 +171,7 @@ export interface ClassModel {
   max_students?: number;
   status: ClassStatus;
   zoom_link?: string;
+  schedule: ProgramSchedule[]; // Jours/heures de cours de la classe (niveau 1)
   program?: Program;
   enrollments?: Enrollment[];
   sessions?: Session[];

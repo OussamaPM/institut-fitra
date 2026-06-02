@@ -66,10 +66,11 @@ export default function AdminProgramsPage() {
   };
 
   const getScheduleSummary = (program: Program) => {
-    if (!program.schedule || program.schedule.length === 0) {
+    const schedule = program.default_class?.schedule;
+    if (!schedule || schedule.length === 0) {
       return 'Aucun horaire';
     }
-    return program.schedule
+    return schedule
       .map(s => `${s.day} ${s.start_time}-${s.end_time}`)
       .join(', ');
   };
