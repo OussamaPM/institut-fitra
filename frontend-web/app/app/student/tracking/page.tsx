@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { studentTrackingApi } from '@/lib/api/tracking-forms';
 import { Card, Button, Badge } from '@/components/ui';
 import { TrackingForm, TrackingFormAssignment } from '@/lib/types';
-import { Clock, CheckCircle, Edit3, Eye, X, Loader2, FileText } from 'lucide-react';
+import { Clock, CheckCircle, Edit3, Eye, X, Loader2, FileText, PauseCircle, PlayCircle } from 'lucide-react';
 
 export default function StudentTrackingPage() {
   const [assignments, setAssignments] = useState<TrackingFormAssignment[]>([]);
@@ -18,6 +18,7 @@ export default function StudentTrackingPage() {
     useState<TrackingFormAssignment | null>(null);
   const [responses, setResponses] = useState<Record<number, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
   // View completed form modal
@@ -56,10 +57,11 @@ export default function StudentTrackingPage() {
       setSelectedForm(data.form);
       setSelectedAssignment(data.assignment);
 
-      // Initialize responses
+      // Initialize responses, pré-remplies depuis le brouillon sauvegardé le cas échéant
       const initialResponses: Record<number, string> = {};
       data.form.questions?.forEach((q) => {
-        initialResponses[q.id] = '';
+        const saved = data.assignment.responses?.find((r) => r.question_id === q.id);
+        initialResponses[q.id] = saved?.answer || '';
       });
       setResponses(initialResponses);
 
@@ -121,6 +123,36 @@ export default function StudentTrackingPage() {
       setSubmitError(errorMessage);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Save draft (pause the form)
+  const handleSaveDraft = async () => {
+    if (!selectedForm || !selectedAssignment) return;
+
+    setIsSavingDraft(true);
+    setSubmitError('');
+
+    try {
+      await studentTrackingApi.saveDraft(selectedForm.id, {
+        responses: Object.entries(responses).map(([questionId, answer]) => ({
+          question_id: parseInt(questionId),
+          answer,
+        })),
+      });
+
+      setShowFormModal(false);
+      setSelectedForm(null);
+      setSelectedAssignment(null);
+      setResponses({});
+      loadAssignments();
+    } catch (err: unknown) {
+      console.error('Error saving draft:', err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Erreur lors de l'enregistrement du brouillon.";
+      setSubmitError(errorMessage);
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
@@ -203,14 +235,27 @@ export default function StudentTrackingPage() {
                         Envoye le{' '}
                         {new Date(assignment.sent_at).toLocaleDateString('fr-FR')}
                       </span>
+                      {assignment.draft_saved_at && (
+                        <Badge variant="warning">Brouillon enregistre</Badge>
+                      )}
                     </div>
                   </div>
                   <Button
                     onClick={() => openFormModal(assignment)}
+                    variant={assignment.draft_saved_at ? 'outline' : 'primary'}
                     className="w-full sm:w-auto min-h-[44px] text-sm"
                   >
-                    <Edit3 size={16} className="mr-2" />
-                    Completer
+                    {assignment.draft_saved_at ? (
+                      <>
+                        <PlayCircle size={16} className="mr-2" />
+                        Reprendre
+                      </>
+                    ) : (
+                      <>
+                        <Edit3 size={16} className="mr-2" />
+                        Completer
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
@@ -372,14 +417,24 @@ export default function StudentTrackingPage() {
                     setResponses({});
                     setSubmitError('');
                   }}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isSavingDraft}
                   className="w-full sm:w-auto min-h-[44px] text-sm"
                 >
                   Annuler
                 </Button>
                 <Button
+                  variant="outline"
+                  onClick={handleSaveDraft}
+                  disabled={isSubmitting || isSavingDraft}
+                  isLoading={isSavingDraft}
+                  className="w-full sm:w-auto min-h-[44px] text-sm"
+                >
+                  <PauseCircle size={16} className="mr-2" />
+                  {isSavingDraft ? 'Enregistrement...' : 'Mettre en pause'}
+                </Button>
+                <Button
                   onClick={handleSubmit}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isSavingDraft}
                   isLoading={isSubmitting}
                   className="w-full sm:w-auto min-h-[44px] text-sm"
                 >

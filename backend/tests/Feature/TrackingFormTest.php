@@ -400,4 +400,101 @@ class TrackingFormTest extends TestCase
         $response = $this->getJson('/api/admin/tracking-forms');
         $response->assertStatus(401);
     }
+
+    /**
+     * Un élève peut enregistrer un brouillon partiel sans répondre aux questions obligatoires.
+     */
+    public function test_student_can_save_draft_with_partial_answers(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $student = User::factory()->create(['role' => 'student']);
+
+        $form = TrackingForm::factory()->create(['created_by' => $admin->id, 'is_active' => true]);
+        $q1 = TrackingFormQuestion::create(['form_id' => $form->id, 'question' => 'Question test', 'type' => 'text', 'required' => true, 'order' => 0]);
+        $q2 = TrackingFormQuestion::create(['form_id' => $form->id, 'question' => 'Question test', 'type' => 'text', 'required' => true, 'order' => 0]);
+
+        $assignment = TrackingFormAssignment::create([
+            'form_id' => $form->id,
+            'student_id' => $student->id,
+            'sent_at' => now(),
+        ]);
+
+        $response = $this->actingAs($student)
+            ->postJson("/api/student/tracking/{$form->id}/save-draft", [
+                'responses' => [
+                    ['question_id' => $q1->id, 'answer' => 'Réponse partielle'],
+                    ['question_id' => $q2->id, 'answer' => ''],
+                ],
+            ]);
+
+        $response->assertStatus(200);
+
+        // Brouillon enregistré, pas complété
+        $this->assertDatabaseHas('tracking_form_assignments', [
+            'id' => $assignment->id,
+            'completed_at' => null,
+        ]);
+        $assignment->refresh();
+        $this->assertNotNull($assignment->draft_saved_at);
+
+        // La réponse partielle est sauvegardée
+        $this->assertDatabaseHas('tracking_form_responses', [
+            'assignment_id' => $assignment->id,
+            'question_id' => $q1->id,
+            'answer' => 'Réponse partielle',
+        ]);
+    }
+
+    /**
+     * En reprenant le formulaire, l'élève retrouve ses réponses sauvegardées.
+     */
+    public function test_student_can_resume_saved_draft(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $student = User::factory()->create(['role' => 'student']);
+
+        $form = TrackingForm::factory()->create(['created_by' => $admin->id, 'is_active' => true]);
+        $q1 = TrackingFormQuestion::create(['form_id' => $form->id, 'question' => 'Question test', 'type' => 'text', 'required' => true, 'order' => 0]);
+
+        $assignment = TrackingFormAssignment::create([
+            'form_id' => $form->id,
+            'student_id' => $student->id,
+            'sent_at' => now(),
+        ]);
+
+        $this->actingAs($student)
+            ->postJson("/api/student/tracking/{$form->id}/save-draft", [
+                'responses' => [['question_id' => $q1->id, 'answer' => 'Mon brouillon']],
+            ])->assertStatus(200);
+
+        // Le show renvoie l'assignation avec les réponses pré-remplies
+        $this->actingAs($student)
+            ->getJson("/api/student/tracking/{$form->id}")
+            ->assertStatus(200)
+            ->assertJsonPath('assignment.responses.0.answer', 'Mon brouillon');
+    }
+
+    /**
+     * On ne peut pas enregistrer un brouillon pour un formulaire déjà complété.
+     */
+    public function test_cannot_save_draft_for_completed_form(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $student = User::factory()->create(['role' => 'student']);
+
+        $form = TrackingForm::factory()->create(['created_by' => $admin->id, 'is_active' => true]);
+        $q1 = TrackingFormQuestion::create(['form_id' => $form->id, 'question' => 'Question test', 'type' => 'text', 'required' => true, 'order' => 0]);
+
+        TrackingFormAssignment::create([
+            'form_id' => $form->id,
+            'student_id' => $student->id,
+            'sent_at' => now(),
+            'completed_at' => now(),
+        ]);
+
+        $this->actingAs($student)
+            ->postJson("/api/student/tracking/{$form->id}/save-draft", [
+                'responses' => [['question_id' => $q1->id, 'answer' => 'Trop tard']],
+            ])->assertStatus(422);
+    }
 }

@@ -76,6 +76,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/student/tracking/history', [StudentTrackingController::class, 'history']);
         Route::get('/student/tracking/{trackingForm}', [StudentTrackingController::class, 'show']);
         Route::post('/student/tracking/{trackingForm}/submit', [StudentTrackingController::class, 'submit']);
+        Route::post('/student/tracking/{trackingForm}/save-draft', [StudentTrackingController::class, 'saveDraft']);
 
         // Student materials (Supports de cours)
         Route::get('/student/materials', [SessionMaterialController::class, 'studentIndex']);

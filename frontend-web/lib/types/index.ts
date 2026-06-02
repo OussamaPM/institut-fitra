@@ -458,6 +458,7 @@ export interface TrackingFormAssignment {
   student_id: number;
   sent_at: string;
   completed_at?: string;
+  draft_saved_at?: string | null; // formulaire commencé puis mis en pause (brouillon)
   student?: User;
   form?: TrackingForm;
   responses?: TrackingFormResponse[];

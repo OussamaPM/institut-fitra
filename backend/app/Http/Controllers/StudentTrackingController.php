@@ -167,6 +167,88 @@ class StudentTrackingController extends Controller
     }
 
     /**
+     * Enregistre un brouillon (formulaire mis en pause) sans le marquer comme complété.
+     * Sauvegarde les réponses partielles ; aucune validation des questions obligatoires.
+     */
+    public function saveDraft(Request $request, TrackingForm $trackingForm): JsonResponse
+    {
+        $student = $request->user();
+
+        $assignment = TrackingFormAssignment::where('form_id', $trackingForm->id)
+            ->where('student_id', $student->id)
+            ->first();
+
+        if (! $assignment) {
+            return response()->json([
+                'message' => 'Ce formulaire ne vous est pas assigné.',
+            ], 403);
+        }
+
+        if (! $trackingForm->is_active) {
+            return response()->json([
+                'message' => 'Ce formulaire n\'est plus disponible.',
+            ], 422);
+        }
+
+        if ($assignment->completed_at) {
+            return response()->json([
+                'message' => 'Vous avez déjà complété ce formulaire.',
+            ], 422);
+        }
+
+        $request->validate([
+            'responses' => 'present|array',
+            'responses.*.question_id' => 'required|exists:tracking_form_questions,id',
+            'responses.*.answer' => 'nullable|string',
+        ]);
+
+        $trackingForm->load('questions');
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($request->responses as $responseData) {
+                // Vérifier que la question appartient bien à ce formulaire
+                $question = $trackingForm->questions->firstWhere('id', $responseData['question_id']);
+
+                if (! $question) {
+                    continue;
+                }
+
+                TrackingFormResponse::updateOrCreate(
+                    [
+                        'assignment_id' => $assignment->id,
+                        'question_id' => $responseData['question_id'],
+                    ],
+                    [
+                        'answer' => $responseData['answer'] ?? '',
+                    ]
+                );
+            }
+
+            // Marquer comme brouillon (en pause), sans compléter
+            $assignment->update([
+                'draft_saved_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Votre brouillon a été enregistré. Vous pourrez le compléter plus tard.',
+                'assignment' => $assignment->load('responses'),
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Erreur lors de l\'enregistrement du brouillon.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Nombre de formulaires en attente (non complétés)
      */
     public function pendingCount(Request $request): JsonResponse

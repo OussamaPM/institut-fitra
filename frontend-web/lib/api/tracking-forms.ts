@@ -136,6 +136,18 @@ export const studentTrackingApi = {
     return response.data;
   },
 
+  // Save a draft (pause the form to complete later)
+  saveDraft: async (
+    formId: number,
+    data: SubmitFormResponseData
+  ): Promise<{ message: string; assignment: TrackingFormAssignment }> => {
+    const response = await apiClient.post(
+      `/student/tracking/${formId}/save-draft`,
+      data
+    );
+    return response.data;
+  },
+
   // Get completed forms history
   getHistory: async (): Promise<TrackingFormAssignment[]> => {
     const response = await apiClient.get('/student/tracking/history');

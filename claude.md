@@ -248,6 +248,7 @@ POST  /api/student/tracking/{id}/submit
 ### Formulaires de suivi
 - `TrackingFormController::assign()` crée une `Notification` (type `tracking`) pour chaque élève assigné
 - `GET /student/tracking/pending-count` → nombre de formulaires non complétés (badge rouge sidebar)
+- **Brouillon / mise en pause** : `POST /student/tracking/{form}/save-draft` enregistre les réponses partielles (`updateOrCreate`) + pose `draft_saved_at` sur l'assignation, **sans** valider les questions obligatoires ni marquer `completed_at`. À la reprise, le `show` renvoie les réponses sauvegardées (pré-remplissage). UI élève : bouton "Mettre en pause", badge "Brouillon enregistré" + bouton "Reprendre". Le formulaire reste comptabilisé comme à compléter (`pending-count` se base sur `completed_at`).
 
 ### Stripe
 - Clés lues depuis la table `settings` (pas `.env`) : `stripe_secret_key`, `stripe_webhook_secret`

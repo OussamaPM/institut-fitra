@@ -18,11 +18,13 @@ class TrackingFormAssignment extends Model
         'student_id',
         'sent_at',
         'completed_at',
+        'draft_saved_at',
     ];
 
     protected $casts = [
         'sent_at' => 'datetime',
         'completed_at' => 'datetime',
+        'draft_saved_at' => 'datetime',
     ];
 
     /**
