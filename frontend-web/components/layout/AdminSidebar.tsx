@@ -197,10 +197,15 @@ const secondaryNavigation: NavItem[] = [
   },
 ];
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
   const pathname = usePathname();
   const router = useRouter();
   const { logout, user } = useAuth();
+
+  const navigateTo = (href: string) => {
+    router.push(href);
+    onNavigate?.();
+  };
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifCount, setNotifCount] = useState(0);
 
@@ -256,7 +261,7 @@ export default function AdminSidebar() {
             return (
               <li key={item.name}>
                 <button
-                  onClick={() => router.push(item.href)}
+                  onClick={() => navigateTo(item.href)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     isActive
                       ? 'bg-primary text-white'
@@ -286,7 +291,7 @@ export default function AdminSidebar() {
             return (
               <li key={item.name}>
                 <button
-                  onClick={() => router.push(item.href)}
+                  onClick={() => navigateTo(item.href)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     isActive
                       ? 'bg-primary text-white'
