@@ -249,6 +249,7 @@ POST  /api/student/tracking/{id}/submit
 ### Messagerie — règles élèves
 - Les élèves **ne peuvent pas initier** de conversation, seulement répondre si un admin leur a écrit
 - Pièces jointes : images/PDF/audio, max 10 Mo → stockées sur Spaces
+- **Ajout de membres à un groupe** : la liste affiche **tous les utilisateurs** non-membres (élèves, profs **et admins**), avec badge « Admin »/« Prof ». L'avatar lit le bon profil selon le rôle (`student_profile` ou `teacher_profile`). Backend `MessageGroupController::addMembers` ne filtre pas par rôle (`exists:users,id`)
 
 ### Formulaires de suivi
 - `TrackingFormController::assign()` crée une `Notification` (type `tracking`) pour chaque élève assigné

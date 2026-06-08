@@ -170,9 +170,9 @@ export default function AdminMessages() {
     try {
       const data = await messagesApi.getGroup(group.id);
       setGroupMembers(data.group.users || []);
-      // Filter available users to show only students not in the group
+      // Filter available users to show everyone (students, teachers, admins) not in the group
       const memberIds = (data.group.users || []).map((u: User) => u.id);
-      const students = availableUsers.filter(u => u.role === 'student' && !memberIds.includes(u.id));
+      const students = availableUsers.filter(u => !memberIds.includes(u.id));
       setAvailableStudentsForGroup(students);
     } catch (err) {
       console.error('Error loading group members:', err);
@@ -323,7 +323,7 @@ export default function AdminMessages() {
       const data = await messagesApi.getGroup(selectedGroup.id);
       setGroupMembers(data.group.users || []);
       const memberIds = (data.group.users || []).map((u: User) => u.id);
-      const students = availableUsers.filter(u => u.role === 'student' && !memberIds.includes(u.id));
+      const students = availableUsers.filter(u => !memberIds.includes(u.id));
       setAvailableStudentsForGroup(students);
       setSelectedNewMembers([]);
       setShowAddMembers(false);
@@ -348,7 +348,7 @@ export default function AdminMessages() {
       const data = await messagesApi.getGroup(selectedGroup.id);
       setGroupMembers(data.group.users || []);
       const memberIds = (data.group.users || []).map((u: User) => u.id);
-      const students = availableUsers.filter(u => u.role === 'student' && !memberIds.includes(u.id));
+      const students = availableUsers.filter(u => !memberIds.includes(u.id));
       setAvailableStudentsForGroup(students);
       // Update groups list
       const grps = await messagesApi.getGroups();
@@ -1375,7 +1375,7 @@ export default function AdminMessages() {
                     type="text"
                     value={memberSearchQuery}
                     onChange={(e) => setMemberSearchQuery(e.target.value)}
-                    placeholder="Rechercher un eleve..."
+                    placeholder="Rechercher un membre (eleve, prof, admin)..."
                     className="w-full px-3 py-2 mb-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
                   />
 
@@ -1383,12 +1383,16 @@ export default function AdminMessages() {
                   {filteredAvailableStudents.length === 0 ? (
                     <p className="text-sm text-gray-500 text-center py-4">
                       {availableStudentsForGroup.length === 0
-                        ? 'Tous les eleves sont deja membres du groupe'
-                        : 'Aucun eleve trouve'}
+                        ? 'Tous les utilisateurs sont deja membres du groupe'
+                        : 'Aucun utilisateur trouve'}
                     </p>
                   ) : (
                     <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-white">
-                      {filteredAvailableStudents.map((student) => (
+                      {filteredAvailableStudents.map((student) => {
+                        const profile = student.student_profile || student.teacher_profile;
+                        const gender = student.student_profile?.gender || student.teacher_profile?.gender;
+                        const photo = student.student_profile?.profile_photo || student.teacher_profile?.profile_photo;
+                        return (
                         <label
                           key={student.id}
                           className="flex items-center gap-3 p-2.5 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
@@ -1400,20 +1404,28 @@ export default function AdminMessages() {
                             className="w-4 h-4 text-primary focus:ring-primary rounded"
                           />
                           <UserAvatar
-                            firstName={student.student_profile?.first_name || ''}
-                            lastName={student.student_profile?.last_name || ''}
-                            gender={student.student_profile?.gender}
-                            profilePhoto={student.student_profile?.profile_photo}
-                            role="student"
+                            firstName={profile?.first_name || ''}
+                            lastName={profile?.last_name || ''}
+                            gender={gender}
+                            profilePhoto={photo}
+                            role={student.role}
                             size="sm"
-                            showGenderBadge={true}
+                            showGenderBadge={student.role === 'student'}
                           />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-secondary truncate">{getUserName(student)}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-secondary truncate">{getUserName(student)}</p>
+                              {student.role !== 'student' && (
+                                <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full flex-shrink-0">
+                                  {student.role === 'admin' ? 'Admin' : 'Prof'}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-gray-500 truncate">{student.email}</p>
                           </div>
                         </label>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
 
