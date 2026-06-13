@@ -26,6 +26,8 @@ export interface StudentProfile {
   last_name: string;
   gender: Gender;
   profile_photo?: string;
+  /** URL complète (Spaces CDN pour .webp, disk public pour legacy) — accesseur backend */
+  profile_photo_url?: string | null;
   phone?: string;
   date_of_birth?: string;
   address?: string;
@@ -42,6 +44,8 @@ export interface TeacherProfile {
   last_name: string;
   gender?: Gender;
   profile_photo?: string;
+  /** URL complète (Spaces CDN pour .webp, disk public pour legacy) — accesseur backend */
+  profile_photo_url?: string | null;
   phone?: string;
   specialization: string;
   bio?: string;

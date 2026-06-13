@@ -418,7 +418,7 @@ export default function StudentMessages() {
                           firstName={profile?.first_name || ''}
                           lastName={profile?.last_name || ''}
                           gender={profile?.gender}
-                          profilePhoto={profile?.profile_photo}
+                          profilePhoto={profile?.profile_photo_url}
                           role={conv.user.role}
                           size="md"
                           showGenderBadge={false}
@@ -539,7 +539,7 @@ export default function StudentMessages() {
             firstName={selectedConversation.user.teacher_profile?.first_name || ''}
             lastName={selectedConversation.user.teacher_profile?.last_name || ''}
             gender={selectedConversation.user.teacher_profile?.gender}
-            profilePhoto={selectedConversation.user.teacher_profile?.profile_photo}
+            profilePhoto={selectedConversation.user.teacher_profile?.profile_photo_url}
             role={selectedConversation.user.role}
             size="sm"
             showGenderBadge={false}
@@ -592,7 +592,7 @@ export default function StudentMessages() {
                             firstName={msg.sender.teacher_profile?.first_name || ''}
                             lastName={msg.sender.teacher_profile?.last_name || ''}
                             gender={msg.sender.teacher_profile?.gender}
-                            profilePhoto={msg.sender.teacher_profile?.profile_photo}
+                            profilePhoto={msg.sender.teacher_profile?.profile_photo_url}
                             role={msg.sender.role}
                             size="sm"
                             showGenderBadge={false}
@@ -775,7 +775,7 @@ export default function StudentMessages() {
                           firstName={msg.sender.student_profile?.first_name || msg.sender.teacher_profile?.first_name || ''}
                           lastName={msg.sender.student_profile?.last_name || msg.sender.teacher_profile?.last_name || ''}
                           gender={msg.sender.student_profile?.gender || msg.sender.teacher_profile?.gender}
-                          profilePhoto={msg.sender.student_profile?.profile_photo || msg.sender.teacher_profile?.profile_photo}
+                          profilePhoto={msg.sender.student_profile?.profile_photo_url || msg.sender.teacher_profile?.profile_photo_url}
                           role={msg.sender.role}
                           size="sm"
                           showGenderBadge={false}
