@@ -7,7 +7,7 @@ import { Message, User, MessageGroup, Conversation } from '@/lib/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { UserAvatar } from '@/components/ui';
-import { ChevronLeft, Send, Users, MessageCircle, Lock, Paperclip, X, FileText, Music, Download } from 'lucide-react';
+import { ChevronLeft, Send, Users, MessageCircle, Lock, Paperclip, X, FileText, Music, Download, UserPlus } from 'lucide-react';
 
 type ViewType = 'list' | 'chat' | 'direct';
 
@@ -24,6 +24,13 @@ export default function StudentMessages() {
   const [isSending, setIsSending] = useState(false);
   const [canWrite, setCanWrite] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  // "Contacter un admin" : démarrage d'une conversation avec un admin pas encore contacté
+  const [availableAdmins, setAvailableAdmins] = useState<User[]>([]);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [contactAdminId, setContactAdminId] = useState<number | ''>('');
+  const [contactContent, setContactContent] = useState('');
+  const [isContacting, setIsContacting] = useState(false);
+  const [contactError, setContactError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -42,16 +49,50 @@ export default function StudentMessages() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [grps, convs] = await Promise.all([
+      const [grps, convs, admins] = await Promise.all([
         messagesApi.getGroups(),
         messagesApi.getConversations(),
+        messagesApi.getAvailableUsers(),
       ]);
       setGroups(grps);
       setConversations(convs);
+      setAvailableAdmins(admins);
     } catch (err) {
       console.error('Error loading data:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Démarrer une conversation avec un admin : envoie le 1er message puis ouvre le fil
+  const handleContactAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contactAdminId || !contactContent.trim() || isContacting) return;
+
+    setIsContacting(true);
+    setContactError('');
+    try {
+      await messagesApi.send({ receiver_id: Number(contactAdminId), content: contactContent });
+      // Recharger conversations + admins disponibles (l'admin contacté disparaît de la liste)
+      const [convs, admins] = await Promise.all([
+        messagesApi.getConversations(),
+        messagesApi.getAvailableUsers(),
+      ]);
+      setConversations(convs);
+      setAvailableAdmins(admins);
+      setShowContactModal(false);
+      setContactContent('');
+      // Ouvrir directement la conversation nouvellement créée
+      const conv = convs.find((c) => c.user.id === Number(contactAdminId));
+      setContactAdminId('');
+      if (conv) {
+        openDirectChat(conv);
+      }
+    } catch (err) {
+      console.error('Error contacting admin:', err);
+      setContactError("Impossible d'envoyer le message. Veuillez réessayer.");
+    } finally {
+      setIsContacting(false);
     }
   };
 
@@ -230,18 +271,125 @@ export default function StudentMessages() {
     return (
       <div className="p-4 md:p-8">
         {/* Header */}
-        <div className="mb-6 md:mb-8">
-          <h1 className="text-2xl md:text-3xl font-playfair font-semibold text-secondary">Messagerie</h1>
-          <p className="text-gray-600 mt-1 md:mt-2 text-sm md:text-base">
-            Consultez vos messages et groupes de discussion
-          </p>
+        <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-playfair font-semibold text-secondary">Messagerie</h1>
+            <p className="text-gray-600 mt-1 md:mt-2 text-sm md:text-base">
+              Consultez vos messages et groupes de discussion
+            </p>
+          </div>
+          {availableAdmins.length > 0 && (
+            <button
+              onClick={() => { setContactAdminId(availableAdmins.length === 1 ? availableAdmins[0].id : ''); setContactContent(''); setContactError(''); setShowContactModal(true); }}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl hover:bg-primary/90 active:bg-primary/80 transition-colors text-sm md:text-base font-medium shadow-sm flex-shrink-0 min-h-[44px]"
+            >
+              <UserPlus size={18} />
+              Contacter un admin
+            </button>
+          )}
         </div>
+
+        {/* Modale "Contacter un admin" */}
+        {showContactModal && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={() => !isContacting && setShowContactModal(false)}>
+            <div
+              className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-xl p-4 md:p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-playfair font-semibold text-secondary flex items-center gap-2">
+                  <UserPlus size={20} className="text-primary" />
+                  Contacter un admin
+                </h3>
+                <button
+                  onClick={() => !isContacting && setShowContactModal(false)}
+                  className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"
+                  aria-label="Fermer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleContactAdmin} className="space-y-4">
+                <div>
+                  <label htmlFor="contact-admin" className="block text-sm font-medium text-gray-700 mb-1">
+                    Administrateur
+                  </label>
+                  <select
+                    id="contact-admin"
+                    value={contactAdminId}
+                    onChange={(e) => setContactAdminId(e.target.value ? Number(e.target.value) : '')}
+                    disabled={isContacting}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm md:text-base bg-white"
+                    required
+                  >
+                    <option value="">Sélectionner un administrateur</option>
+                    {availableAdmins.map((admin) => (
+                      <option key={admin.id} value={admin.id}>
+                        {getAdminDisplayName(admin)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="contact-message" className="block text-sm font-medium text-gray-700 mb-1">
+                    Votre message
+                  </label>
+                  <textarea
+                    id="contact-message"
+                    value={contactContent}
+                    onChange={(e) => setContactContent(e.target.value)}
+                    disabled={isContacting}
+                    rows={4}
+                    placeholder="Écrivez votre message..."
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm md:text-base resize-none"
+                    required
+                  />
+                </div>
+
+                {contactError && (
+                  <p className="text-sm text-red-600">{contactError}</p>
+                )}
+
+                <p className="text-xs text-gray-400">
+                  Une seule conversation est possible par administrateur. Une fois ouverte, poursuivez les échanges dans ce fil.
+                </p>
+
+                <div className="flex gap-2 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => !isContacting && setShowContactModal(false)}
+                    className="px-4 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors text-sm md:text-base min-h-[44px]"
+                    disabled={isContacting}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isContacting || !contactAdminId || !contactContent.trim()}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl hover:bg-primary/90 active:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base font-medium min-h-[44px]"
+                  >
+                    {isContacting ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    ) : (
+                      <Send size={18} />
+                    )}
+                    Envoyer
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {!hasContent ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 md:p-12 text-center">
             <MessageCircle size={48} className="text-gray-200 mx-auto mb-4" />
             <h3 className="text-base md:text-lg font-medium text-secondary mb-2">Aucun message</h3>
-            <p className="text-gray-500 text-sm md:text-base">Vous n&apos;avez pas encore de messages ou de groupes.</p>
+            <p className="text-gray-500 text-sm md:text-base">
+              Vous n&apos;avez pas encore de messages. Utilisez le bouton « Contacter un admin » pour démarrer une conversation.
+            </p>
           </div>
         ) : (
           <div className="space-y-4 md:space-y-6">

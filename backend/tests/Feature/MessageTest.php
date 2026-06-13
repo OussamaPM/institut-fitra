@@ -151,18 +151,41 @@ class MessageTest extends TestCase
     }
 
     /**
-     * Test student cannot initiate conversation.
+     * Test student can initiate a conversation with an admin.
      */
-    public function test_student_cannot_initiate_conversation(): void
+    public function test_student_can_initiate_conversation_with_admin(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $student = User::factory()->create(['role' => 'student']);
 
-        // Student tries to initiate (no prior contact from admin)
+        // Student initiates contact with an admin (no prior message)
         $response = $this->actingAs($student)
             ->postJson('/api/messages', [
                 'receiver_id' => $admin->id,
                 'content' => 'Hello admin!',
+            ]);
+
+        $response->assertStatus(201);
+
+        $this->assertDatabaseHas('messages', [
+            'sender_id' => $student->id,
+            'receiver_id' => $admin->id,
+            'content' => 'Hello admin!',
+        ]);
+    }
+
+    /**
+     * Test student cannot message a non-admin (teacher or another student).
+     */
+    public function test_student_cannot_message_non_admin(): void
+    {
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $student = User::factory()->create(['role' => 'student']);
+
+        $response = $this->actingAs($student)
+            ->postJson('/api/messages', [
+                'receiver_id' => $teacher->id,
+                'content' => 'Hello teacher!',
             ]);
 
         $response->assertStatus(403);
@@ -332,17 +355,36 @@ class MessageTest extends TestCase
     }
 
     /**
-     * Test students get empty available users list.
+     * Test students get the list of admins they have not contacted yet,
+     * and that an admin disappears once a conversation exists.
      */
-    public function test_students_get_empty_available_users(): void
+    public function test_student_available_users_lists_only_uncontacted_admins(): void
     {
+        $contactedAdmin = User::factory()->create(['role' => 'admin']);
+        $freshAdmin = User::factory()->create(['role' => 'admin']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
         $student = User::factory()->create(['role' => 'student']);
+
+        // Student already has a conversation with one admin
+        Message::create([
+            'sender_id' => $student->id,
+            'receiver_id' => $contactedAdmin->id,
+            'content' => 'Déjà contacté',
+            'sent_at' => now(),
+        ]);
 
         $response = $this->actingAs($student)
             ->getJson('/api/messages/available-users');
 
-        $response->assertStatus(200)
-            ->assertJson(['users' => []]);
+        $response->assertStatus(200);
+        $ids = collect($response->json('users'))->pluck('id');
+
+        // Only the not-yet-contacted admin is offered
+        $this->assertTrue($ids->contains($freshAdmin->id));
+        $this->assertFalse($ids->contains($contactedAdmin->id));
+        // Never lists teachers or other students
+        $this->assertFalse($ids->contains($teacher->id));
+        $this->assertFalse($ids->contains($student->id));
     }
 
     /**

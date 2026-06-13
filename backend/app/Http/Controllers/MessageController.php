@@ -30,18 +30,9 @@ class MessageController extends Controller
             $user = $request->user();
             $userId = $user->id;
 
-            // Students can only see conversations with admins who messaged them first
+            // Students see their conversations with admins (whoever initiated)
             if ($user->role === 'student') {
-                // Get admin IDs who have sent messages to this student
-                $adminIds = Message::where('receiver_id', $userId)
-                    ->whereNotNull('sender_id')
-                    ->whereHas('sender', function ($query) {
-                        $query->where('role', 'admin');
-                    })
-                    ->pluck('sender_id')
-                    ->unique();
-
-                $userIds = $adminIds;
+                $userIds = $this->conversedAdminIds($userId);
             } else {
                 // Get all unique users the current user has exchanged messages with
                 $sentToIds = Message::where('sender_id', $userId)
@@ -125,16 +116,23 @@ class MessageController extends Controller
         try {
             $currentUser = $request->user();
 
-            // Students can only access conversations with admins who messaged them first
+            // Students can only access their conversation with an administrator (whoever initiated)
             if ($currentUser->role === 'student') {
-                // Check if the other user is an admin who has sent at least one message to this student
-                $adminInitiated = $user->role === 'admin' && Message::where('sender_id', $user->id)
-                    ->where('receiver_id', $currentUser->id)
+                $hasConversation = $user->role === 'admin' && Message::whereNull('group_id')
+                    ->where(function ($query) use ($currentUser, $user) {
+                        $query->where(function ($q) use ($currentUser, $user) {
+                            $q->where('sender_id', $currentUser->id)
+                                ->where('receiver_id', $user->id);
+                        })->orWhere(function ($q) use ($currentUser, $user) {
+                            $q->where('sender_id', $user->id)
+                                ->where('receiver_id', $currentUser->id);
+                        });
+                    })
                     ->exists();
 
-                if (! $adminInitiated) {
+                if (! $hasConversation) {
                     return response()->json([
-                        'message' => 'Les étudiants ne peuvent voir que les conversations initiées par un administrateur.',
+                        'message' => 'Les étudiants ne peuvent voir que leurs conversations avec un administrateur.',
                     ], 403);
                 }
             }
@@ -178,21 +176,13 @@ class MessageController extends Controller
         try {
             $currentUser = $request->user();
 
-            // Students can only reply to admins who messaged them first
+            // Students can only message administrators (to initiate or reply)
             if ($currentUser->role === 'student') {
-                $receiverId = (int) $request->receiver_id;
-                $receiver = User::find($receiverId);
+                $receiver = User::find((int) $request->receiver_id);
 
-                // Check if receiver is an admin who has sent at least one message to this student
-                $adminInitiated = $receiver &&
-                    $receiver->role === 'admin' &&
-                    Message::where('sender_id', $receiverId)
-                        ->where('receiver_id', $currentUser->id)
-                        ->exists();
-
-                if (! $adminInitiated) {
+                if (! $receiver || $receiver->role !== 'admin') {
                     return response()->json([
-                        'message' => 'Les étudiants ne peuvent répondre qu\'aux administrateurs qui les ont contactés.',
+                        'message' => 'Les étudiants ne peuvent contacter que les administrateurs.',
                     ], 403);
                 }
             }
@@ -376,15 +366,49 @@ class MessageController extends Controller
      * Students cannot access this - they only have groups.
      * Supports search and pagination for better performance.
      */
+    /**
+     * Admin IDs the given student has exchanged at least one direct message with
+     * (in either direction). Used to scope a student's conversations and to hide
+     * already-contacted admins from the "Contacter un admin" list.
+     */
+    private function conversedAdminIds(int $studentId): \Illuminate\Support\Collection
+    {
+        $counterpartIds = Message::whereNull('group_id')
+            ->where(function ($query) use ($studentId) {
+                $query->where('sender_id', $studentId)
+                    ->orWhere('receiver_id', $studentId);
+            })
+            ->get(['sender_id', 'receiver_id'])
+            ->flatMap(fn ($message) => [$message->sender_id, $message->receiver_id])
+            ->reject(fn ($id) => $id === null || $id === $studentId)
+            ->unique();
+
+        if ($counterpartIds->isEmpty()) {
+            return collect();
+        }
+
+        return User::whereIn('id', $counterpartIds)
+            ->where('role', 'admin')
+            ->pluck('id');
+    }
+
     public function availableUsers(Request $request): JsonResponse
     {
         try {
             $currentUser = $request->user();
 
-            // Students cannot access direct messages
+            // Students can start a conversation only with admins they haven't contacted yet
             if ($currentUser->role === 'student') {
+                $alreadyContacted = $this->conversedAdminIds($currentUser->id);
+
+                $admins = User::where('role', 'admin')
+                    ->whereNotIn('id', $alreadyContacted)
+                    ->with(['teacherProfile'])
+                    ->orderBy('first_name')
+                    ->get();
+
                 return response()->json([
-                    'users' => [],
+                    'users' => $admins,
                 ]);
             }
 
