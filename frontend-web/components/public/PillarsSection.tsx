@@ -38,7 +38,7 @@ export default function PillarsSection() {
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-playfair font-bold text-secondary mb-4 sm:mb-6">
             Nos 5 Thématiques Majeures
           </h2>
-          <p className="text-gray-500 text-sm sm:text-base">
+          <p className="text-gray-500 text-base sm:text-lg">
             Un équilibre entre texte, pratique et réflexion pour une compréhension globale de notre religion.
           </p>
           <div className="w-16 sm:w-20 h-0.5 sm:h-1 bg-primary mx-auto rounded-full mt-4 sm:mt-6"></div>
@@ -54,7 +54,7 @@ export default function PillarsSection() {
                 <span className="text-xl sm:text-2xl">{pillar.icon}</span>
               </div>
               <h3 className="text-sm sm:text-base md:text-lg font-bold mb-1 sm:mb-2 text-primary">{pillar.title}</h3>
-              <p className="text-xs text-gray-600 line-clamp-2">{pillar.description}</p>
+              <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">{pillar.description}</p>
             </div>
           ))}
         </div>

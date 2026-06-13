@@ -46,7 +46,7 @@ export default function StudyPathSection() {
                 Durée : 4 ans
               </span>
             </div>
-            <p className="text-gray-500 italic mb-8 pl-4 sm:pl-0">Le socle indispensable pour tout étudiant en quête de sens.</p>
+            <p className="text-sm sm:text-base text-gray-500 italic mb-8 pl-4 sm:pl-0">Le socle indispensable pour tout étudiant en quête de sens.</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
@@ -91,8 +91,8 @@ export default function StudyPathSection() {
                 <div key={i} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-start gap-4">
                   <div className="mt-1" style={{ color: '#7B5A4B' }}>{item.icon}</div>
                   <div>
-                    <h4 className="font-semibold text-gray-800">{item.title}</h4>
-                    <p className="text-sm text-gray-500">{item.desc}</p>
+                    <h4 className="text-base sm:text-lg font-semibold text-gray-800">{item.title}</h4>
+                    <p className="text-sm sm:text-base text-gray-500">{item.desc}</p>
                   </div>
                 </div>
               ))}
@@ -106,8 +106,8 @@ export default function StudyPathSection() {
                 </svg>
               </div>
               <div>
-                <h4 className="font-semibold text-gray-800">Fikr (Pensée et réflexion)</h4>
-                <p className="text-sm text-gray-500">Libérer l'esprit des concepts importés et restaurer la pensée sur des bases authentiques : ce travail de déconstruction s'infuse d'abord de façon informelle dans toutes les matières en 1ère année, avant de devenir le cœur de conférences régulières et ciblées durant les 3 années suivantes.</p>
+                <h4 className="text-base sm:text-lg font-semibold text-gray-800">Fikr (Pensée et réflexion)</h4>
+                <p className="text-sm sm:text-base text-gray-500">Libérer l'esprit des concepts importés et restaurer la pensée sur des bases authentiques : ce travail de déconstruction s'infuse d'abord de façon informelle dans toutes les matières en 1ère année, avant de devenir le cœur de conférences régulières et ciblées durant les 3 années suivantes.</p>
               </div>
             </div>
           </div>
@@ -134,9 +134,9 @@ export default function StudyPathSection() {
                 Durée : 2 ans
               </span>
             </div>
-            <p className="text-gray-500 italic mb-8">Un cursus de 2 ans pour prendre de la hauteur.</p>
+            <p className="text-sm sm:text-base text-gray-500 italic mb-8">Un cursus de 2 ans pour prendre de la hauteur.</p>
 
-            <div className="space-y-4 text-gray-600 text-xs sm:text-sm leading-relaxed">
+            <div className="space-y-4 text-gray-600 text-sm sm:text-base leading-relaxed">
               <p>
                 Fort d'un premier cycle de quatre ans centré sur les connaissances fondamentales et indispensables à chaque croyant, ce nouveau parcours vous ouvre les portes d'une vision élargie et approfondie.
               </p>

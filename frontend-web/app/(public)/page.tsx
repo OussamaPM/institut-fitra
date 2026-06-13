@@ -56,7 +56,7 @@ export default async function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
             <div>
-              <div className="space-y-4 text-gray-600 text-sm sm:text-base leading-relaxed">
+              <div className="space-y-4 text-gray-600 text-base sm:text-lg leading-relaxed">
                 <p>
                   L'Institut FITRA est un institut d'apprentissage en ligne spécialisé dans l'enseignement des sciences islamiques, pensé pour rendre le savoir accessible à chacun, sans limite de lieu ni de parcours.
                 </p>
@@ -104,8 +104,8 @@ export default async function HomePage() {
                       </svg>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-secondary mb-1 text-sm sm:text-base">{item.titre}</h3>
-                      <p className="text-xs sm:text-sm text-gray-600">{item.desc}</p>
+                      <h3 className="font-semibold text-secondary mb-1 text-base sm:text-lg">{item.titre}</h3>
+                      <p className="text-sm sm:text-base text-gray-600">{item.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -146,10 +146,10 @@ export default async function HomePage() {
                     {valeur.icon}
                   </svg>
                 </div>
-                <h3 className="font-playfair text-lg sm:text-xl font-semibold text-secondary mb-2">
+                <h3 className="font-playfair text-xl sm:text-2xl font-semibold text-secondary mb-2">
                   {valeur.titre}
                 </h3>
-                <p className="text-gray-600 text-xs sm:text-sm">{valeur.desc}</p>
+                <p className="text-gray-600 text-sm sm:text-base">{valeur.desc}</p>
               </div>
             ))}
           </div>
@@ -172,7 +172,7 @@ export default async function HomePage() {
             <h3 className="font-playfair text-xl sm:text-2xl font-semibold text-secondary mb-4">
               Direction et enseignement
             </h3>
-            <p className="text-gray-600 text-sm sm:text-base mb-6 leading-relaxed">
+            <p className="text-gray-600 text-base sm:text-lg mb-6 leading-relaxed">
               Le cursus est supervisé par <strong className="text-secondary">Cheikh Abdelbasset</strong>,
               dont le parcours s'inscrit dans une tradition de transmission authentique et de rigueur
             </p>
@@ -201,8 +201,8 @@ export default async function HomePage() {
                     </svg>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-secondary text-sm sm:text-base mb-1">{item.titre}</h4>
-                    <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">{item.desc}</p>
+                    <h4 className="font-semibold text-secondary text-base sm:text-lg mb-1">{item.titre}</h4>
+                    <p className="text-gray-600 text-sm sm:text-base leading-relaxed">{item.desc}</p>
                   </div>
                 </div>
               ))}
@@ -220,16 +220,16 @@ export default async function HomePage() {
                     </div>
                   </div>
                   <div className="p-4 sm:p-6">
-                    <h3 className="font-playfair text-lg sm:text-xl font-semibold text-secondary mb-1">
+                    <h3 className="font-playfair text-xl sm:text-2xl font-semibold text-secondary mb-1">
                       {teacher.first_name} {teacher.last_name}
                     </h3>
                     {teacher.teacher_profile?.specialization && (
-                      <p className="text-primary font-medium text-xs sm:text-sm mb-2 sm:mb-3">
+                      <p className="text-primary font-medium text-sm sm:text-base mb-2 sm:mb-3">
                         {teacher.teacher_profile.specialization}
                       </p>
                     )}
                     {teacher.teacher_profile?.bio && (
-                      <p className="text-gray-600 text-xs sm:text-sm line-clamp-3">
+                      <p className="text-gray-600 text-sm sm:text-base line-clamp-3">
                         {teacher.teacher_profile.bio}
                       </p>
                     )}
@@ -255,7 +255,7 @@ export default async function HomePage() {
             Les Séminaires Intensifs
           </h2>
           <div className="w-16 sm:w-20 h-0.5 sm:h-1 bg-primary mx-auto rounded-full mb-8"></div>
-          <p className="text-gray-600 text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed mb-8">
+          <p className="text-gray-600 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed mb-8">
             Des séminaires explorant une grande diversité de thèmes, abordant aussi bien les sciences islamiques que les questions contemporaines.
           </p>
           <span className="inline-flex items-center gap-2 px-7 py-3 bg-secondary/60 text-white rounded-lg font-semibold text-sm sm:text-base shadow-md cursor-default">

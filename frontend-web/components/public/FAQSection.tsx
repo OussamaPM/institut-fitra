@@ -11,7 +11,7 @@ const faqs = [
   {
     question: 'Comment se déroulent les cours ?',
     answer:
-      "Les cours ont lieu en ligne via une plateforme dédiée. Vous avez accès au direct pour interagir, ainsi qu'aux replays disponibles pendant 2 semaines pour réviser à votre rythme.",
+      "Les cours ont lieu en ligne via une plateforme dédiée. Vous avez accès au direct pour interagir, ainsi qu'aux replays disponibles pendant 4 semaines pour réviser à votre rythme.",
   },
   {
     question: 'Est-ce que je recevrai un certificat ?',

@@ -6,6 +6,30 @@ import { useParams } from 'next/navigation';
 import { Program } from '@/lib/types';
 import checkoutApi from '@/lib/api/checkout';
 
+function PracticalInfo({
+  label,
+  value,
+  full,
+  children,
+}: {
+  label: string;
+  value: React.ReactNode;
+  full?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`flex items-start gap-3 p-3 bg-background rounded-lg ${full ? 'sm:col-span-2' : ''}`}>
+      <svg className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {children}
+      </svg>
+      <div className="min-w-0">
+        <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">{label}</p>
+        <p className="text-sm sm:text-base font-medium text-secondary">{value}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function ProgramDetailPage() {
   const params = useParams();
   const programId = parseInt(params.id as string);
@@ -202,6 +226,51 @@ export default function ProgramDetailPage() {
   const programPrice = typeof program.price === 'string' ? parseFloat(program.price) : program.price;
   const installmentAmount = programPrice / formData.installments_count;
 
+  // Dates de la 1ère et de la dernière séance, calculées depuis l'emploi du temps de la classe par défaut
+  const dayIndex: { [key: string]: number } = {
+    dimanche: 0, lundi: 1, mardi: 2, mercredi: 3, jeudi: 4, vendredi: 5, samedi: 6,
+  };
+
+  const parseLocalDate = (value: string) => {
+    const [y, m, d] = value.split('T')[0].split('-').map(Number);
+    return new Date(y, m - 1, d, 12, 0, 0); // midi local pour éviter tout décalage de fuseau
+  };
+
+  const formatLongDate = (date: Date) => {
+    const s = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  };
+
+  const getSessionBounds = () => {
+    const cls = program.default_class;
+    if (!cls?.schedule?.length || !cls.start_date || !cls.end_date) return null;
+    const days = cls.schedule
+      .map((s) => dayIndex[s.day?.toLowerCase()])
+      .filter((n) => n !== undefined);
+    if (days.length === 0) return null;
+
+    const start = parseLocalDate(cls.start_date);
+    const end = parseLocalDate(cls.end_date);
+    if (start > end) return null;
+
+    let first: Date | null = null;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      if (days.includes(d.getDay())) { first = d; break; }
+    }
+    let last: Date | null = null;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(end);
+      d.setDate(end.getDate() - i);
+      if (days.includes(d.getDay())) { last = d; break; }
+    }
+    if (!first || !last || first > end) return null;
+    return { first, last };
+  };
+
+  const sessionBounds = getSessionBounds();
+
   return (
     <div className="py-6 sm:py-8 md:py-12 bg-background min-h-screen">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -296,6 +365,40 @@ export default function ProgramDetailPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Informations pratiques */}
+                <div>
+                  <h3 className="font-semibold text-secondary mb-2 sm:mb-3 text-sm sm:text-base">Informations pratiques</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+                    {sessionBounds && (
+                      <PracticalInfo label="Rentrée" value={formatLongDate(sessionBounds.first)}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </PracticalInfo>
+                    )}
+                    {sessionBounds && (
+                      <PracticalInfo label="Fin des cours" value={formatLongDate(sessionBounds.last)}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </PracticalInfo>
+                    )}
+                    <PracticalInfo label="Découpage 1" value="Septembre → Mars : Quran & Sīra">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </PracticalInfo>
+                    <PracticalInfo label="Découpage 2" value="Avril → Juin : Fiqh & Tazkiyah (Aqida en 1ère année)">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                    </PracticalInfo>
+                    <PracticalInfo full label="Replays" value="Accès au replay durant 1 mois">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </PracticalInfo>
+                    <PracticalInfo
+                      full
+                      label="Vacances"
+                      value="Aïd al-Fitr et Aïd al-Adha, ainsi qu'une semaine lors des vacances scolaires (1ère partie d'année)"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </PracticalInfo>
+                  </div>
+                </div>
 
                 {/* Contenu du programme */}
                 {program.subject_description && (

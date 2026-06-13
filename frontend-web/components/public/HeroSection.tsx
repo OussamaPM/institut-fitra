@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import Image from 'next/image';
 
 export default function HeroSection() {
@@ -18,21 +17,13 @@ export default function HeroSection() {
 
       <div className="max-w-7xl mx-auto px-6 py-10 lg:py-12 grid lg:grid-cols-2 gap-8 lg:gap-12 items-center relative z-10">
         {/* Contenu textuel */}
-        <div className="order-2 lg:order-1">
-<h1 className="text-4xl sm:text-5xl lg:text-7xl font-playfair font-bold text-secondary leading-tight mb-6">
+        <div className="order-2 lg:order-1 text-center lg:text-left">
+          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-playfair font-bold text-secondary leading-tight mb-6">
             Un Cursus <br /> <span className="text-primary">Complet & Progressif</span>
           </h1>
-          <p className="text-base sm:text-lg text-gray-600 mb-8 lg:mb-10 leading-relaxed max-w-lg">
+          <p className="text-base sm:text-lg text-gray-600 leading-relaxed max-w-lg mx-auto lg:mx-0">
             Étudier sa religion à travers un cursus complet, afin de cheminer vers Allāh avec clairvoyance
           </p>
-          <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-            <Link
-              href="/cursus"
-              className="px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl text-center font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all"
-            >
-              Explorer le cursus
-            </Link>
-          </div>
         </div>
 
         {/* Image avec citation - visible uniquement sur desktop */}
