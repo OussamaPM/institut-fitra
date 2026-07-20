@@ -309,7 +309,7 @@ export default function ReinscriptionCheckoutPage() {
               {/* Installments options */}
               {level.max_installments > 1 && (
                 <>
-                  {[2, 3, 4].filter(n => n <= level.max_installments).map((n) => (
+                  {[2, 3, 5, 10].filter(n => n <= level.max_installments).map((n) => (
                     <label
                       key={n}
                       className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ${
