@@ -521,7 +521,9 @@ class StripeService
             ->where('class_id', $order->class_id)
             ->first();
 
-        if (! $existingEnrollment) {
+        $enrollment = $existingEnrollment;
+
+        if (! $enrollment) {
             $enrollment = Enrollment::create([
                 'student_id' => $student->id,
                 'class_id' => $order->class_id,
@@ -531,19 +533,20 @@ class StripeService
 
             $logType = $isReinscription ? 'Réinscription' : 'Inscription';
             Log::info("{$logType} créée pour student #{$student->id} dans class #{$order->class_id}");
+        }
 
-            // Envoyer l'email de confirmation (réinscription ou inscription initiale)
-            try {
-                $enrollment->load('class.program');
-                if ($isReinscription) {
-                    $level = $order->program_level_id ? ProgramLevel::find($order->program_level_id) : null;
-                    Mail::to($student->email)->send(new ReinscriptionConfirmationMail($student, $enrollment, $level));
-                } else {
-                    Mail::to($student->email)->send(new EnrollmentConfirmationMail($student, $enrollment));
-                }
-            } catch (\Exception $e) {
-                Log::error('Enrollment confirmation email error (Stripe): '.$e->getMessage());
+        // Envoyer l'email de confirmation : réinscription (même si l'élève est déjà
+        // inscrit à la classe — cas d'une montée de niveau) ou inscription initiale
+        try {
+            $enrollment->load('class.program');
+            if ($isReinscription) {
+                $level = $order->program_level_id ? ProgramLevel::find($order->program_level_id) : null;
+                Mail::to($student->email)->send(new ReinscriptionConfirmationMail($student, $enrollment, $level));
+            } elseif (! $existingEnrollment) {
+                Mail::to($student->email)->send(new EnrollmentConfirmationMail($student, $enrollment));
             }
+        } catch (\Exception $e) {
+            Log::error('Enrollment confirmation email error (Stripe): '.$e->getMessage());
         }
     }
 
