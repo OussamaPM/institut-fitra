@@ -19,10 +19,12 @@ class TrackingForm extends Model
         'description',
         'created_by',
         'is_active',
+        'is_default',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_default' => 'boolean',
     ];
 
     /**
@@ -86,5 +88,46 @@ class TrackingForm extends Model
     public function getTotalAssignedAttribute(): int
     {
         return $this->assignments()->count();
+    }
+
+    /**
+     * Assigne automatiquement les formulaires par défaut (ex: "Formulaire d'inscription")
+     * à un nouvel élève. Appelée à la création de tout utilisateur ayant le rôle student,
+     * quel que soit le point d'entrée (inscription, paiement Stripe, commande manuelle,
+     * création admin, gratuit...).
+     */
+    public static function assignDefaultsToStudent(User $student): void
+    {
+        if ($student->role !== 'student') {
+            return;
+        }
+
+        $defaultForms = static::where('is_default', true)
+            ->where('is_active', true)
+            ->get();
+
+        foreach ($defaultForms as $form) {
+            $alreadyAssigned = TrackingFormAssignment::where('form_id', $form->id)
+                ->where('student_id', $student->id)
+                ->exists();
+
+            if ($alreadyAssigned) {
+                continue;
+            }
+
+            TrackingFormAssignment::create([
+                'form_id' => $form->id,
+                'student_id' => $student->id,
+            ]);
+
+            Notification::create([
+                'user_id' => $student->id,
+                'type' => 'tracking',
+                'category' => 'tracking_form_assigned',
+                'title' => 'Nouveau formulaire de suivi',
+                'message' => "Un formulaire de suivi vous a été envoyé : \"{$form->title}\". Veuillez le compléter dès que possible.",
+                'action_url' => '/student/tracking',
+            ]);
+        }
     }
 }

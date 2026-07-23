@@ -53,6 +53,21 @@ class User extends Authenticatable
     }
 
     /**
+     * Boot des événements du modèle.
+     */
+    protected static function booted(): void
+    {
+        // À la création de tout élève (inscription, paiement Stripe, commande
+        // manuelle, gratuit, création admin...), lui assigner automatiquement
+        // les formulaires de suivi marqués par défaut (ex: "Formulaire d'inscription").
+        static::created(function (User $user): void {
+            if ($user->role === 'student') {
+                TrackingForm::assignDefaultsToStudent($user);
+            }
+        });
+    }
+
+    /**
      * Get the student profile associated with the user.
      */
     public function studentProfile(): HasOne
