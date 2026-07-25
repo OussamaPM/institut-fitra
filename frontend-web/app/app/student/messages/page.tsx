@@ -33,6 +33,7 @@ export default function StudentMessages() {
   const [contactError, setContactError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     loadData();
@@ -41,6 +42,14 @@ export default function StudentMessages() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // La zone de saisie grandit avec le contenu (Entrée = retour à la ligne)
+  useEffect(() => {
+    const el = messageInputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+  }, [messageContent, view]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -680,23 +689,25 @@ export default function StudentMessages() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="p-2.5 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="p-2.5 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center self-end"
               title="Joindre un fichier"
             >
               <Paperclip size={20} />
             </button>
-            <input
-              type="text"
+            <textarea
+              ref={messageInputRef}
+              rows={1}
               value={messageContent}
               onChange={(e) => setMessageContent(e.target.value)}
               placeholder="Ecrivez votre message..."
-              className="flex-1 px-3 md:px-4 py-2.5 md:py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm md:text-base min-h-[44px]"
+              className="flex-1 px-3 md:px-4 py-2.5 md:py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm md:text-base min-h-[44px] resize-none overflow-y-auto"
               disabled={isSending}
             />
             <button
               type="submit"
               disabled={isSending || (!messageContent.trim() && !selectedFile)}
-              className="px-4 md:px-6 py-2.5 md:py-3 bg-primary text-white rounded-xl hover:bg-primary/90 active:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-h-[44px] min-w-[44px]"
+              title="Envoyer le message"
+              className="px-4 md:px-6 py-2.5 md:py-3 bg-primary text-white rounded-xl hover:bg-primary/90 active:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-h-[44px] min-w-[44px] self-end"
             >
               {isSending ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -862,23 +873,25 @@ export default function StudentMessages() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="p-2.5 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="p-2.5 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center self-end"
               title="Joindre un fichier"
             >
               <Paperclip size={20} />
             </button>
-            <input
-              type="text"
+            <textarea
+              ref={messageInputRef}
+              rows={1}
               value={messageContent}
               onChange={(e) => setMessageContent(e.target.value)}
               placeholder="Ecrivez votre message..."
-              className="flex-1 px-3 md:px-4 py-2.5 md:py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm md:text-base min-h-[44px]"
+              className="flex-1 px-3 md:px-4 py-2.5 md:py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm md:text-base min-h-[44px] resize-none overflow-y-auto"
               disabled={isSending}
             />
             <button
               type="submit"
               disabled={isSending || (!messageContent.trim() && !selectedFile)}
-              className="px-4 md:px-6 py-2.5 md:py-3 bg-primary text-white rounded-xl hover:bg-primary/90 active:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-h-[44px] min-w-[44px]"
+              title="Envoyer le message"
+              className="px-4 md:px-6 py-2.5 md:py-3 bg-primary text-white rounded-xl hover:bg-primary/90 active:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-h-[44px] min-w-[44px] self-end"
             >
               {isSending ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

@@ -58,6 +58,15 @@ export default function AdminMessages() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // La zone de saisie grandit avec le contenu (Entrée = retour à la ligne)
+  useEffect(() => {
+    const el = messageInputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+  }, [messageContent, view]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
@@ -1774,23 +1783,25 @@ export default function AdminMessages() {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="p-3 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-colors flex items-center justify-center"
+            className="p-3 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-colors flex items-center justify-center self-end"
             title="Joindre un fichier"
           >
             <Paperclip size={20} />
           </button>
-          <input
-            type="text"
+          <textarea
+            ref={messageInputRef}
+            rows={1}
             value={messageContent}
             onChange={(e) => setMessageContent(e.target.value)}
             placeholder="Ecrivez votre message..."
-            className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none overflow-y-auto"
             disabled={isSending}
           />
           <button
             type="submit"
             disabled={isSending || (!messageContent.trim() && !selectedFile)}
-            className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            title="Envoyer le message"
+            className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 self-end"
           >
             {isSending ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
