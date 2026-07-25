@@ -18,9 +18,9 @@ export default function PublicFooter() {
   return (
     <footer className="bg-secondary text-white mt-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12">
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
-          {/* À propos */}
-          <div className="space-y-3 sm:space-y-4 col-span-2 sm:col-span-2 md:col-span-1">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-5 gap-6 sm:gap-8">
+          {/* À propos — colonne élargie (2/5), les 3 autres à 1/5 chacune */}
+          <div className="space-y-3 sm:space-y-4 col-span-2 sm:col-span-2 md:col-span-2">
             <Image
               src="/images/logo-fitra.webp"
               alt="Institut Fitra"
@@ -31,6 +31,21 @@ export default function PublicFooter() {
             <p className="text-gray-300 text-xs sm:text-sm">
               Une plateforme d'apprentissage en ligne dédiée à l'enseignement islamique et arabe.
             </p>
+            {/* Collaboration Jannati : 3/4 texte + 1/4 logo sur mobile, 50/50 sur desktop */}
+            <div className="grid grid-cols-4 md:grid-cols-2 items-center gap-2">
+              <p className="col-span-3 md:col-span-1 text-center text-[11px] sm:text-xs uppercase tracking-[0.15em] text-gray-400">
+                – En collaboration avec Jannati Institut –
+              </p>
+              <div className="flex justify-center">
+                <Image
+                  src="/images/logo-jannati.webp"
+                  alt="Jannati Institut"
+                  width={416}
+                  height={684}
+                  className="h-14 sm:h-16 w-auto opacity-90"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Navigation rapide */}
