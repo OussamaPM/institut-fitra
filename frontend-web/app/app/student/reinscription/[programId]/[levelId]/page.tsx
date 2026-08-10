@@ -8,6 +8,7 @@ import { ProgramLevel } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ArrowLeft, CreditCard, Calendar, Clock, User, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import TermsAcceptance from '@/components/ui/TermsAcceptance';
 
 export default function ReinscriptionCheckoutPage() {
   const router = useRouter();
@@ -23,6 +24,8 @@ export default function ReinscriptionCheckoutPage() {
   const [error, setError] = useState('');
   const [installmentsCount, setInstallmentsCount] = useState(1);
   const [selectedClassId, setSelectedClassId] = useState<number | undefined>(undefined);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsError, setTermsError] = useState(false);
 
   useEffect(() => {
     loadLevel();
@@ -56,8 +59,17 @@ export default function ReinscriptionCheckoutPage() {
       return;
     }
 
+    if (!termsAccepted) {
+      setTermsError(true);
+      setError(
+        "Vous devez accepter les Conditions Générales de Vente pour poursuivre : l'inscription vous engage à payer la totalité du prix, sans rétractation ni remboursement possible."
+      );
+      return;
+    }
+
     setIsProcessing(true);
     setError('');
+    setTermsError(false);
 
     try {
       const response = await reinscriptionApi.createCheckoutSession({
@@ -372,10 +384,23 @@ export default function ReinscriptionCheckoutPage() {
           </div>
         </div>
 
+        {/* Acceptation des CGV */}
+        <div className="mb-6">
+          <TermsAcceptance
+            checked={termsAccepted}
+            onChange={(value) => {
+              setTermsAccepted(value);
+              if (value) setTermsError(false);
+            }}
+            disabled={isProcessing}
+            highlightError={termsError}
+          />
+        </div>
+
         {/* Checkout Button */}
         <button
           onClick={handleCheckout}
-          disabled={isProcessing}
+          disabled={isProcessing || !termsAccepted}
           className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 active:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isProcessing ? (

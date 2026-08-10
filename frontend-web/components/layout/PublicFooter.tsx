@@ -72,6 +72,11 @@ export default function PublicFooter() {
                   Contact
                 </Link>
               </li>
+              <li>
+                <Link href="/cgv" className="text-gray-300 hover:text-white transition-colors">
+                  Conditions Générales de Vente
+                </Link>
+              </li>
             </ul>
           </div>
 

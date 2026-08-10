@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Program } from '@/lib/types';
 import checkoutApi from '@/lib/api/checkout';
+import TermsAcceptance from '@/components/ui/TermsAcceptance';
 
 function PracticalInfo({
   label,
@@ -67,6 +68,8 @@ export default function ProgramDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsError, setTermsError] = useState(false);
   const countryDropdownRef = useRef<HTMLDivElement>(null);
   const [selectedCountryCode, setSelectedCountryCode] = useState(countryCodes[0]); // France par défaut
   const [formData, setFormData] = useState({
@@ -122,6 +125,7 @@ export default function ProgramDetailPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
+    setTermsError(false);
 
     if (!formData.customer_first_name || !formData.customer_last_name || !formData.customer_email || !formData.customer_gender) {
       setFormError('Veuillez remplir tous les champs obligatoires.');
@@ -132,6 +136,14 @@ export default function ProgramDetailPage() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.customer_email)) {
       setFormError('Veuillez entrer une adresse email valide.');
+      return;
+    }
+
+    if (!termsAccepted) {
+      setTermsError(true);
+      setFormError(
+        "Vous devez accepter les Conditions Générales de Vente pour poursuivre : l'inscription vous engage à payer la totalité du prix, sans rétractation ni remboursement possible."
+      );
       return;
     }
 
@@ -701,11 +713,22 @@ export default function ProgramDetailPage() {
                     )}
                   </div>
 
+                  {/* Acceptation des CGV */}
+                  <TermsAcceptance
+                    checked={termsAccepted}
+                    onChange={(value) => {
+                      setTermsAccepted(value);
+                      if (value) setTermsError(false);
+                    }}
+                    disabled={isSubmitting}
+                    highlightError={termsError}
+                  />
+
                   {/* Boutons */}
                   <div className="space-y-3">
                     <button
                       type="submit"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !termsAccepted}
                       className="w-full flex items-center justify-center px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                     >
                       {isSubmitting ? (
