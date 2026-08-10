@@ -141,9 +141,7 @@ export default function ProgramDetailPage() {
 
     if (!termsAccepted) {
       setTermsError(true);
-      setFormError(
-        "Vous devez accepter les Conditions Générales de Vente pour poursuivre : l'inscription vous engage à payer la totalité du prix, sans rétractation ni remboursement possible."
-      );
+      setFormError('Vous devez accepter les Conditions Générales de Vente pour poursuivre.');
       return;
     }
 

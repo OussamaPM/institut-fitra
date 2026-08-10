@@ -52,31 +52,12 @@ export default function TermsAcceptance({
             />
           </svg>
           <div className="min-w-0">
-            <p className="font-semibold text-secondary text-sm mb-1.5">
-              Engagement ferme et définitif
+            <p className="font-semibold text-secondary text-sm mb-1.5">Votre engagement</p>
+            <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+              Votre inscription vous engage au paiement de{' '}
+              <strong>la totalité de la cotisation</strong>, même en plusieurs fois.{' '}
+              <strong>L'inscription ne pourra plus être annulée ni remboursée.</strong>
             </p>
-            <ul className="space-y-1 text-xs sm:text-sm text-gray-700">
-              <li className="flex gap-1.5">
-                <span className="text-error font-bold flex-shrink-0">•</span>
-                <span>
-                  Votre inscription vous engage à payer <strong>la totalité du prix</strong> de la
-                  formation, même en cas de paiement en plusieurs fois.
-                </span>
-              </li>
-              <li className="flex gap-1.5">
-                <span className="text-error font-bold flex-shrink-0">•</span>
-                <span>
-                  <strong>Aucune rétractation n'est possible après le paiement.</strong>
-                </span>
-              </li>
-              <li className="flex gap-1.5">
-                <span className="text-error font-bold flex-shrink-0">•</span>
-                <span>
-                  <strong>Aucun remboursement</strong>, total ou partiel, ne sera accordé, quel
-                  qu'en soit le motif (abandon, absence, changement de situation…).
-                </span>
-              </li>
-            </ul>
           </div>
         </div>
       </div>
@@ -113,12 +94,9 @@ export default function TermsAcceptance({
           >
             Conditions Générales de Vente
           </a>
-          . Je demande expressément que la formation démarre immédiatement et je reconnais{' '}
-          <strong>
-            m'engager à en payer la totalité du prix, renoncer à tout droit de rétractation et
-            n'avoir droit à aucun remboursement
-          </strong>
-          , pour quelque motif que ce soit. <span className="text-error">*</span>
+          . Je comprends qu'
+          <strong>après paiement, aucun remboursement ne pourra être demandé</strong>.{' '}
+          <span className="text-error">*</span>
         </span>
       </label>
     </div>

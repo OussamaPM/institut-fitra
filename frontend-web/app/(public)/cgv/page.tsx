@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: "Conditions Générales de Vente | Institut Fitra",
   description:
-    "Conditions d'inscription à l'Institut Fitra : engagement à payer la totalité du prix, absence de rétractation et de remboursement après paiement.",
+    "Conditions d'inscription à l'Institut Fitra : engagement à payer la totalité de la cotisation, absence de rétractation et de remboursement après paiement.",
 };
 
 const CONTACT_EMAIL = 'contact@institut-fitra.fr';
@@ -43,7 +43,7 @@ export default function CGVPage() {
               <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
                 <li>
                   Votre inscription vous engage à payer{' '}
-                  <strong>la totalité du prix de la formation</strong>.
+                  <strong>la totalité de la cotisation</strong>.
                 </li>
                 <li>
                   <strong>Aucune rétractation</strong> n'est possible après paiement.
@@ -59,7 +59,7 @@ export default function CGVPage() {
           <div className="p-5 sm:p-8 space-y-6 sm:space-y-8">
             <Article n={1} title="Inscription">
               <p>
-                L'inscription se fait en ligne depuis la page de la formation. Elle devient ferme et
+                L'inscription se fait en ligne depuis la page du cursus. Elle devient ferme et
                 définitive dès la validation du paiement. Votre compte élève est alors créé et
                 l'accès à l'espace élève vous est ouvert immédiatement.
               </p>
@@ -69,10 +69,11 @@ export default function CGVPage() {
               </p>
             </Article>
 
-            <Article n={2} title="Prix et paiement">
+            <Article n={2} title="Cotisation et paiement">
               <p>
-                Le prix indiqué sur la page de la formation couvre l'intégralité de la formation, sur
-                toute sa durée. Il est forfaitaire : il n'est pas calculé à la séance.
+                Le montant indiqué sur la page du cursus couvre l'intégralité de l'année
+                d'enseignement, sur toute sa durée. Il est forfaitaire : il n'est pas calculé à la
+                séance.
               </p>
               <p>
                 Le paiement s'effectue par carte bancaire, en une fois ou en plusieurs versements
@@ -84,8 +85,8 @@ export default function CGVPage() {
 
             <Article n={3} title="Engagement à payer la totalité">
               <p className="font-medium text-secondary">
-                Toute inscription payée vous engage personnellement à régler la totalité du prix de
-                la formation.
+                Toute inscription payée vous engage personnellement à régler la totalité de la
+                cotisation.
               </p>
               <p>
                 Cet engagement reste entier quelles que soient les circonstances : abandon en cours
@@ -101,7 +102,7 @@ export default function CGVPage() {
 
             <Article n={4} title="Pas de rétractation">
               <p>
-                Vous demandez expressément que la formation démarre immédiatement, dès votre
+                Vous demandez expressément que les cours démarrent immédiatement, dès votre
                 paiement, sans attendre l'expiration d'un quelconque délai. L'accès à votre compte,
                 aux cours, aux supports et aux replays vous est ouvert dès cet instant.
               </p>
@@ -117,12 +118,12 @@ export default function CGVPage() {
                 partiel, ne sera accordé, pour quelque motif que ce soit.
               </p>
               <p>
-                Aucun avoir, report sur une autre formation ou transfert à une autre personne ne sera
+                Aucun avoir, report sur une autre année ou transfert à une autre personne ne sera
                 accordé, sauf accord écrit et exceptionnel de l'Institut.
               </p>
               <p className="text-sm text-gray-500 italic">
-                Seule exception : si l'Institut annule définitivement la formation avant son
-                démarrage, les sommes versées sont intégralement restituées.
+                Seule exception : si l'Institut annule définitivement le cursus avant son démarrage,
+                les sommes versées sont intégralement restituées.
               </p>
             </Article>
 
@@ -136,8 +137,8 @@ export default function CGVPage() {
 
             <Article n={7} title="Déroulement des cours">
               <p>
-                Les cours ont lieu à distance, aux jours et horaires indiqués sur la page de la
-                formation. Vous devez disposer d'un équipement et d'une connexion adaptés.
+                Les cours ont lieu à distance, aux jours et horaires indiqués sur la page du cursus.
+                Vous devez disposer d'un équipement et d'une connexion adaptés.
               </p>
               <p>
                 Une séance peut exceptionnellement être reportée ou déplacée (indisponibilité de
@@ -168,9 +169,9 @@ export default function CGVPage() {
             {/* Rappel final */}
             <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4 sm:p-5 text-center">
               <p className="text-sm text-gray-700">
-                En validant votre paiement, vous vous engagez à régler la totalité du prix de la
-                formation. Vous ne disposez d'aucun droit de rétractation et aucun remboursement ne
-                sera possible.
+                En validant votre paiement, vous vous engagez à régler la totalité de la cotisation.
+                Vous ne disposez d'aucun droit de rétractation et aucun remboursement ne sera
+                possible.
               </p>
             </div>
           </div>
