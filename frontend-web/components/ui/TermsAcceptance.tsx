@@ -35,31 +35,14 @@ export default function TermsAcceptance({
 
   return (
     <div className="space-y-3">
-      {/* Avertissement explicite */}
-      <div className="rounded-lg border-2 border-error/40 bg-error/5 p-3 sm:p-4">
-        <div className="flex items-start gap-2.5">
-          <svg
-            className="w-5 h-5 text-error flex-shrink-0 mt-0.5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.74-3L13.74 4a2 2 0 00-3.48 0L3.33 16a2 2 0 001.74 3z"
-            />
-          </svg>
-          <div className="min-w-0">
-            <p className="font-semibold text-secondary text-sm mb-1.5">Votre engagement</p>
-            <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-              Votre inscription vous engage au paiement de{' '}
-              <strong>la totalité de la cotisation</strong>, même en plusieurs fois.{' '}
-              <strong>L'inscription ne pourra plus être annulée ni remboursée.</strong>
-            </p>
-          </div>
-        </div>
+      {/* Rappel de l'engagement */}
+      <div>
+        <p className="font-semibold text-secondary text-sm mb-1">Votre engagement</p>
+        <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+          Votre inscription vous engage au paiement de{' '}
+          <strong>la totalité de la cotisation</strong>, même en plusieurs fois.{' '}
+          <strong>L'inscription ne pourra plus être annulée ni remboursée.</strong>
+        </p>
       </div>
 
       {/* Case à cocher */}
