@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClassModel;
+use App\Models\DashboardAlertDismissal;
 use App\Models\Enrollment;
 use App\Models\Message;
 use App\Models\Order;
@@ -15,8 +16,10 @@ use App\Models\Session;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\Rule;
 
 class DashboardController extends Controller
 {
@@ -156,7 +159,8 @@ class DashboardController extends Controller
 
     /**
      * Get dashboard alerts (failed payments, sessions without replay, etc.)
-     * Cached for 2 minutes
+     * Cached for 2 minutes. Les types masqués par l'admin connecté sont retirés
+     * de la réponse et listés dans `dismissed`.
      */
     public function alerts(): JsonResponse
     {
@@ -235,7 +239,58 @@ class DashboardController extends Controller
             ];
         });
 
+        $dismissed = DashboardAlertDismissal::where('user_id', Auth::id())
+            ->pluck('alert_type')
+            ->all();
+
+        // Les alertes masquées restent connues du frontend (pour le bouton
+        // « Réafficher ») mais sont neutralisées dans le payload principal.
+        foreach ($dismissed as $type) {
+            if ($type === 'failed_payments') {
+                $alerts['failed_payments'] = [];
+                $alerts['failed_payments_count'] = 0;
+            } elseif ($type === 'sessions_without_replay') {
+                $alerts['sessions_without_replay'] = [];
+                $alerts['sessions_without_replay_count'] = 0;
+            }
+        }
+
+        $alerts['dismissed'] = $dismissed;
+
         return response()->json($alerts);
+    }
+
+    /**
+     * Masquer définitivement un type d'alerte pour l'admin connecté
+     */
+    public function dismissAlert(Request $request): JsonResponse
+    {
+        $request->validate([
+            'alert_type' => ['required', 'string', Rule::in(DashboardAlertDismissal::TYPES)],
+        ]);
+
+        DashboardAlertDismissal::updateOrCreate(
+            ['user_id' => Auth::id(), 'alert_type' => $request->alert_type],
+            ['dismissed_at' => now()],
+        );
+
+        return response()->json(['message' => 'Alerte masquée.']);
+    }
+
+    /**
+     * Réafficher un type d'alerte masqué
+     */
+    public function restoreAlert(Request $request): JsonResponse
+    {
+        $request->validate([
+            'alert_type' => ['required', 'string', Rule::in(DashboardAlertDismissal::TYPES)],
+        ]);
+
+        DashboardAlertDismissal::where('user_id', Auth::id())
+            ->where('alert_type', $request->alert_type)
+            ->delete();
+
+        return response()->json(['message' => 'Alerte réaffichée.']);
     }
 
     /**

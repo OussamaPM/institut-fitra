@@ -183,6 +183,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/admin/dashboard/recent-enrollments', [DashboardController::class, 'recentEnrollments']);
         Route::get('/admin/dashboard/today-sessions', [DashboardController::class, 'todaySessions']);
         Route::get('/admin/dashboard/alerts', [DashboardController::class, 'alerts']);
+        Route::post('/admin/dashboard/alerts/dismiss', [DashboardController::class, 'dismissAlert']);
+        Route::post('/admin/dashboard/alerts/restore', [DashboardController::class, 'restoreAlert']);
         Route::get('/admin/dashboard/unread-messages', [DashboardController::class, 'unreadMessages']);
         Route::get('/admin/dashboard/recent-students', [DashboardController::class, 'recentStudents']);
 

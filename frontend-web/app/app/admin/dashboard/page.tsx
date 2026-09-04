@@ -135,6 +135,14 @@ interface UpcomingSession {
   };
 }
 
+type AlertType = 'failed_payments' | 'sessions_without_replay' | 'unread_messages';
+
+const ALERT_LABELS: Record<AlertType, string> = {
+  failed_payments: 'Paiements échoués',
+  sessions_without_replay: 'Sessions sans replay',
+  unread_messages: 'Messages non lus',
+};
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [todaySessions, setTodaySessions] = useState<TodaySession[]>([]);
@@ -146,6 +154,7 @@ export default function AdminDashboardPage() {
   const [recentUnread, setRecentUnread] = useState<UnreadMessage[]>([]);
   const [recentStudents, setRecentStudents] = useState<RecentStudent[]>([]);
   const [upcomingSessions, setUpcomingSessions] = useState<UpcomingSession[]>([]);
+  const [dismissedAlerts, setDismissedAlerts] = useState<AlertType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -181,6 +190,7 @@ export default function AdminDashboardPage() {
       setFailedPaymentsCount(alertsRes.data.failed_payments_count);
       setSessionsWithoutReplay(alertsRes.data.sessions_without_replay);
       setSessionsWithoutReplayCount(alertsRes.data.sessions_without_replay_count);
+      setDismissedAlerts(alertsRes.data.dismissed ?? []);
       setUnreadCount(unreadMessagesRes.data.unread_count);
       setRecentUnread(unreadMessagesRes.data.recent_unread);
       setRecentStudents(recentStudentsRes.data.recent_students);
@@ -192,6 +202,37 @@ export default function AdminDashboardPage() {
       setIsLoading(false);
     }
   };
+
+  const dismissAlert = async (alertType: AlertType) => {
+    const previous = dismissedAlerts;
+    setDismissedAlerts([...previous, alertType]);
+    try {
+      await apiClient.post('/admin/dashboard/alerts/dismiss', { alert_type: alertType });
+    } catch (err) {
+      console.error('Failed to dismiss alert:', err);
+      setDismissedAlerts(previous);
+    }
+  };
+
+  const restoreAlert = async (alertType: AlertType) => {
+    const previous = dismissedAlerts;
+    setDismissedAlerts(previous.filter((type) => type !== alertType));
+    try {
+      await apiClient.post('/admin/dashboard/alerts/restore', { alert_type: alertType });
+      await loadDashboardData();
+    } catch (err) {
+      console.error('Failed to restore alert:', err);
+      setDismissedAlerts(previous);
+    }
+  };
+
+  const isAlertDismissed = (alertType: AlertType) => dismissedAlerts.includes(alertType);
+
+  const showFailedPayments = failedPaymentsCount > 0 && !isAlertDismissed('failed_payments');
+  const showSessionsWithoutReplay =
+    sessionsWithoutReplayCount > 0 && !isAlertDismissed('sessions_without_replay');
+  const showUnreadMessages = unreadCount > 0 && !isAlertDismissed('unread_messages');
+  const hasVisibleAlerts = showFailedPayments || showSessionsWithoutReplay || showUnreadMessages;
 
   const formatTime = (dateString: string) => {
     return formatParis(dateString, 'HH:mm');
@@ -352,17 +393,19 @@ export default function AdminDashboardPage() {
       )}
 
       {/* Alerts Section */}
-      {(failedPaymentsCount > 0 || sessionsWithoutReplayCount > 0 || unreadCount > 0) && (
+      {(hasVisibleAlerts || dismissedAlerts.length > 0) && (
         <div className="mb-8">
-          <h2 className="font-playfair text-xl font-semibold text-secondary mb-4 flex items-center gap-2">
-            <svg className="w-5 h-5 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            Actions requises
-          </h2>
+          {hasVisibleAlerts && (
+            <h2 className="font-playfair text-xl font-semibold text-secondary mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              Actions requises
+            </h2>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Failed Payments Alert */}
-            {failedPaymentsCount > 0 && (
+            {showFailedPayments && (
               <Card className="border-l-4 border-l-red-500">
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-2">
@@ -372,9 +415,22 @@ export default function AdminDashboardPage() {
                       </svg>
                       Paiements échoués
                     </span>
-                    <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-bold">
-                      {failedPaymentsCount}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-bold">
+                        {failedPaymentsCount}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => dismissAlert('failed_payments')}
+                        title="Masquer cette alerte"
+                        aria-label="Masquer l'alerte Paiements échoués"
+                        className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                   <p className="text-sm text-gray-600 mb-3">
                     {failedPaymentsCount} paiement{failedPaymentsCount > 1 ? 's' : ''} en échec à traiter
@@ -390,7 +446,7 @@ export default function AdminDashboardPage() {
             )}
 
             {/* Sessions Without Replay Alert */}
-            {sessionsWithoutReplayCount > 0 && (
+            {showSessionsWithoutReplay && (
               <Card className="border-l-4 border-l-orange-500">
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-2">
@@ -400,9 +456,22 @@ export default function AdminDashboardPage() {
                       </svg>
                       Sessions sans replay
                     </span>
-                    <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-bold">
-                      {sessionsWithoutReplayCount}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-bold">
+                        {sessionsWithoutReplayCount}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => dismissAlert('sessions_without_replay')}
+                        title="Masquer cette alerte"
+                        aria-label="Masquer l'alerte Sessions sans replay"
+                        className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                   <p className="text-sm text-gray-600 mb-3">
                     {sessionsWithoutReplayCount} session{sessionsWithoutReplayCount > 1 ? 's' : ''} terminée{sessionsWithoutReplayCount > 1 ? 's' : ''} sans replay
@@ -418,7 +487,7 @@ export default function AdminDashboardPage() {
             )}
 
             {/* Unread Messages Alert */}
-            {unreadCount > 0 && (
+            {showUnreadMessages && (
               <Card className="border-l-4 border-l-blue-500">
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-2">
@@ -428,9 +497,22 @@ export default function AdminDashboardPage() {
                       </svg>
                       Messages non lus
                     </span>
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-bold">
-                      {unreadCount}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-bold">
+                        {unreadCount}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => dismissAlert('unread_messages')}
+                        title="Masquer cette alerte"
+                        aria-label="Masquer l'alerte Messages non lus"
+                        className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                   {recentUnread.length > 0 && (
                     <p className="text-sm text-gray-600 mb-3 truncate">
@@ -447,6 +529,28 @@ export default function AdminDashboardPage() {
               </Card>
             )}
           </div>
+
+          {dismissedAlerts.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+              <span>
+                {dismissedAlerts.length} alerte{dismissedAlerts.length > 1 ? 's' : ''} masquée
+                {dismissedAlerts.length > 1 ? 's' : ''} :
+              </span>
+              {dismissedAlerts.map((alertType) => (
+                <button
+                  key={alertType}
+                  type="button"
+                  onClick={() => restoreAlert(alertType)}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 bg-white text-gray-600 hover:text-primary hover:border-primary transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  {ALERT_LABELS[alertType]}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
