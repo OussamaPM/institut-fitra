@@ -247,6 +247,12 @@ POST  /api/student/tracking/{id}/submit
 - `GET /admin/dashboard/alerts` neutralise les types retirés (liste vidée + compteur à 0) et renvoie `dismissed: string[]` (tous les types retirés → le frontend cache la carte) et `restorable: string[]` (les `hidden` seuls → ligne de réaffichage). Le filtrage est appliqué **hors du cache** `dashboard_alerts` (2 min), qui reste global.
 - Ligne discrète sous la grille : « N alerte(s) masquée(s) » avec un bouton par type pour réafficher (`POST .../alerts/restore`). Les alertes supprimées n'y figurent pas.
 
+### Envoi des identifiants (commande artisan)
+- `php artisan students:send-credentials {class?} {--student=*} {--send}` — réinitialise le mot de passe et envoie `NewAccountCredentialsMail`
+- Deux modes : **par classe** (ID ou nom partiel → tous les inscrits actifs) ou **par élève** (`--student="Prénom Nom"` ou `--student=email@x.com`, répétable)
+- Un `--student` introuvable ou ambigu (plusieurs correspondances) **annule tout l'envoi** et liste les candidats avec leur email
+- **Aperçu par défaut** : sans `--send`, la commande affiche seulement le tableau des destinataires. Avec `--send`, confirmation interactive avant réinitialisation
+
 ### Commandes manuelles (admin)
 - `POST /api/admin/orders/manual` : `class_id` **obligatoire** — le `default_class_id` du programme n'est pas utilisé
 - **Niveau de base** (sans `program_level_id`) : crée l'utilisateur élève si l'email n'existe pas, sinon vérifie qu'il n'est pas déjà inscrit à cette classe ; crée l'inscription. `customer_gender` requis (`required_without:program_level_id`)
