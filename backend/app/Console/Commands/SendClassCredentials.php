@@ -19,7 +19,8 @@ class SendClassCredentials extends Command
     protected $signature = 'students:send-credentials
         {class? : ID ou nom (partiel) de la classe — ignoré si --student est utilisé}
         {--student=* : Email ou nom complet d\'un élève précis (répétable)}
-        {--send : Envoyer réellement les emails et réinitialiser les mots de passe (sinon aperçu seulement)}';
+        {--send : Envoyer réellement les emails et réinitialiser les mots de passe (sinon aperçu seulement)}
+        {--force : Sauter la confirmation interactive (obligatoire depuis Ploi / un cron, qui n\'ont pas de TTY)}';
 
     protected $description = 'Réinitialise le mot de passe et envoie les identifiants par email, soit à toute une classe, soit à une liste d\'élèves';
 
@@ -61,13 +62,23 @@ class SendClassCredentials extends Command
             return self::SUCCESS;
         }
 
-        // Confirmation explicite avant action destructive
+        // Confirmation explicite avant action destructive.
+        // Sans TTY (Ploi, cron), confirm() renvoie toujours false : --force est alors requis.
         $this->newLine();
         $this->warn('⚠️  Cette action va RÉINITIALISER le mot de passe de '.$students->count().' élève(s) et leur envoyer par email.');
-        if (! $this->confirm('Confirmer l\'envoi ?', false)) {
-            $this->info('Annulé.');
 
-            return self::SUCCESS;
+        if (! $this->option('force')) {
+            if (! $this->input->isInteractive()) {
+                $this->error('Pas de terminal interactif : ajoutez --force pour confirmer l\'envoi.');
+
+                return self::FAILURE;
+            }
+
+            if (! $this->confirm('Confirmer l\'envoi ?', false)) {
+                $this->info('Annulé.');
+
+                return self::SUCCESS;
+            }
         }
 
         return $this->send($students);

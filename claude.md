@@ -248,10 +248,12 @@ POST  /api/student/tracking/{id}/submit
 - Ligne discrète sous la grille : « N alerte(s) masquée(s) » avec un bouton par type pour réafficher (`POST .../alerts/restore`). Les alertes supprimées n'y figurent pas.
 
 ### Envoi des identifiants (commande artisan)
-- `php artisan students:send-credentials {class?} {--student=*} {--send}` — réinitialise le mot de passe et envoie `NewAccountCredentialsMail`
+- `php artisan students:send-credentials {class?} {--student=*} {--send} {--force}` — réinitialise le mot de passe et envoie `NewAccountCredentialsMail`
 - Deux modes : **par classe** (ID ou nom partiel → tous les inscrits actifs) ou **par élève** (`--student="Prénom Nom"` ou `--student=email@x.com`, répétable)
 - Un `--student` introuvable ou ambigu (plusieurs correspondances) **annule tout l'envoi** et liste les candidats avec leur email
 - **Aperçu par défaut** : sans `--send`, la commande affiche seulement le tableau des destinataires. Avec `--send`, confirmation interactive avant réinitialisation
+- **Sans TTY** (Ploi « Custom commands », cron) la confirmation est impossible : `--force` est alors obligatoire, sinon la commande s'arrête en erreur au lieu d'envoyer silencieusement
+- Depuis Ploi, saisir la commande **sans** `cd` ni `php artisan` (Ploi ajoute le préfixe lui-même) : `students:send-credentials --student="..." --send --force`
 
 ### Commandes manuelles (admin)
 - `POST /api/admin/orders/manual` : `class_id` **obligatoire** — le `default_class_id` du programme n'est pas utilisé
