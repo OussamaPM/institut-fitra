@@ -143,6 +143,72 @@ const ALERT_LABELS: Record<AlertType, string> = {
   unread_messages: 'Messages non lus',
 };
 
+function AlertActionsMenu({
+  alertType,
+  isOpen,
+  onToggle,
+  onDismiss,
+}: {
+  alertType: AlertType;
+  isOpen: boolean;
+  onToggle: () => void;
+  onDismiss: (alertType: AlertType, mode: 'hidden' | 'deleted') => void;
+}) {
+  return (
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={onToggle}
+        title="Options de l&apos;alerte"
+        aria-label={`Options de l'alerte ${ALERT_LABELS[alertType]}`}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+      >
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 5.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 5.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full mt-1 z-20 w-60 rounded-lg border border-gray-200 bg-white shadow-lg py-1"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => onDismiss(alertType, 'hidden')}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
+          >
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+            </svg>
+            <span>
+              Masquer
+              <span className="block text-xs text-gray-400">Réaffichable à tout moment</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => onDismiss(alertType, 'deleted')}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
+          >
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span>
+              Supprimer définitivement
+              <span className="block text-xs text-red-400">Sans retour possible</span>
+            </span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [todaySessions, setTodaySessions] = useState<TodaySession[]>([]);
@@ -155,12 +221,22 @@ export default function AdminDashboardPage() {
   const [recentStudents, setRecentStudents] = useState<RecentStudent[]>([]);
   const [upcomingSessions, setUpcomingSessions] = useState<UpcomingSession[]>([]);
   const [dismissedAlerts, setDismissedAlerts] = useState<AlertType[]>([]);
+  const [restorableAlerts, setRestorableAlerts] = useState<AlertType[]>([]);
+  const [openAlertMenu, setOpenAlertMenu] = useState<AlertType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  // Fermer le menu d'une carte d'alerte au clic ailleurs
+  useEffect(() => {
+    if (!openAlertMenu) return;
+    const close = () => setOpenAlertMenu(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [openAlertMenu]);
 
   const loadDashboardData = async () => {
     try {
@@ -191,6 +267,7 @@ export default function AdminDashboardPage() {
       setSessionsWithoutReplay(alertsRes.data.sessions_without_replay);
       setSessionsWithoutReplayCount(alertsRes.data.sessions_without_replay_count);
       setDismissedAlerts(alertsRes.data.dismissed ?? []);
+      setRestorableAlerts(alertsRes.data.restorable ?? []);
       setUnreadCount(unreadMessagesRes.data.unread_count);
       setRecentUnread(unreadMessagesRes.data.recent_unread);
       setRecentStudents(recentStudentsRes.data.recent_students);
@@ -203,26 +280,51 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const dismissAlert = async (alertType: AlertType) => {
-    const previous = dismissedAlerts;
-    setDismissedAlerts([...previous, alertType]);
+  const dismissAlert = async (alertType: AlertType, mode: 'hidden' | 'deleted') => {
+    if (
+      mode === 'deleted' &&
+      !confirm(
+        `Supprimer définitivement l'alerte « ${ALERT_LABELS[alertType]} » ? Elle ne pourra plus être réaffichée.`
+      )
+    ) {
+      return;
+    }
+
+    setOpenAlertMenu(null);
+    const previousDismissed = dismissedAlerts;
+    const previousRestorable = restorableAlerts;
+
+    setDismissedAlerts([...previousDismissed, alertType]);
+    if (mode === 'hidden') {
+      setRestorableAlerts([...previousRestorable, alertType]);
+    }
+
     try {
-      await apiClient.post('/admin/dashboard/alerts/dismiss', { alert_type: alertType });
+      await apiClient.post('/admin/dashboard/alerts/dismiss', {
+        alert_type: alertType,
+        mode,
+      });
     } catch (err) {
       console.error('Failed to dismiss alert:', err);
-      setDismissedAlerts(previous);
+      setDismissedAlerts(previousDismissed);
+      setRestorableAlerts(previousRestorable);
     }
   };
 
   const restoreAlert = async (alertType: AlertType) => {
-    const previous = dismissedAlerts;
-    setDismissedAlerts(previous.filter((type) => type !== alertType));
+    const previousDismissed = dismissedAlerts;
+    const previousRestorable = restorableAlerts;
+
+    setDismissedAlerts(previousDismissed.filter((type) => type !== alertType));
+    setRestorableAlerts(previousRestorable.filter((type) => type !== alertType));
+
     try {
       await apiClient.post('/admin/dashboard/alerts/restore', { alert_type: alertType });
       await loadDashboardData();
     } catch (err) {
       console.error('Failed to restore alert:', err);
-      setDismissedAlerts(previous);
+      setDismissedAlerts(previousDismissed);
+      setRestorableAlerts(previousRestorable);
     }
   };
 
@@ -393,7 +495,7 @@ export default function AdminDashboardPage() {
       )}
 
       {/* Alerts Section */}
-      {(hasVisibleAlerts || dismissedAlerts.length > 0) && (
+      {(hasVisibleAlerts || restorableAlerts.length > 0) && (
         <div className="mb-8">
           {hasVisibleAlerts && (
             <h2 className="font-playfair text-xl font-semibold text-secondary mb-4 flex items-center gap-2">
@@ -419,17 +521,12 @@ export default function AdminDashboardPage() {
                       <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-bold">
                         {failedPaymentsCount}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => dismissAlert('failed_payments')}
-                        title="Masquer cette alerte"
-                        aria-label="Masquer l'alerte Paiements échoués"
-                        className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                      <AlertActionsMenu
+                        alertType="failed_payments"
+                        isOpen={openAlertMenu === 'failed_payments'}
+                        onToggle={() => setOpenAlertMenu(openAlertMenu === 'failed_payments' ? null : 'failed_payments')}
+                        onDismiss={dismissAlert}
+                      />
                     </div>
                   </div>
                   <p className="text-sm text-gray-600 mb-3">
@@ -460,17 +557,12 @@ export default function AdminDashboardPage() {
                       <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-bold">
                         {sessionsWithoutReplayCount}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => dismissAlert('sessions_without_replay')}
-                        title="Masquer cette alerte"
-                        aria-label="Masquer l'alerte Sessions sans replay"
-                        className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                      <AlertActionsMenu
+                        alertType="sessions_without_replay"
+                        isOpen={openAlertMenu === 'sessions_without_replay'}
+                        onToggle={() => setOpenAlertMenu(openAlertMenu === 'sessions_without_replay' ? null : 'sessions_without_replay')}
+                        onDismiss={dismissAlert}
+                      />
                     </div>
                   </div>
                   <p className="text-sm text-gray-600 mb-3">
@@ -501,17 +593,12 @@ export default function AdminDashboardPage() {
                       <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-bold">
                         {unreadCount}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => dismissAlert('unread_messages')}
-                        title="Masquer cette alerte"
-                        aria-label="Masquer l'alerte Messages non lus"
-                        className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                      <AlertActionsMenu
+                        alertType="unread_messages"
+                        isOpen={openAlertMenu === 'unread_messages'}
+                        onToggle={() => setOpenAlertMenu(openAlertMenu === 'unread_messages' ? null : 'unread_messages')}
+                        onDismiss={dismissAlert}
+                      />
                     </div>
                   </div>
                   {recentUnread.length > 0 && (
@@ -530,13 +617,13 @@ export default function AdminDashboardPage() {
             )}
           </div>
 
-          {dismissedAlerts.length > 0 && (
+          {restorableAlerts.length > 0 && (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-500">
               <span>
-                {dismissedAlerts.length} alerte{dismissedAlerts.length > 1 ? 's' : ''} masquée
-                {dismissedAlerts.length > 1 ? 's' : ''} :
+                {restorableAlerts.length} alerte{restorableAlerts.length > 1 ? 's' : ''} masquée
+                {restorableAlerts.length > 1 ? 's' : ''} :
               </span>
-              {dismissedAlerts.map((alertType) => (
+              {restorableAlerts.map((alertType) => (
                 <button
                   key={alertType}
                   type="button"

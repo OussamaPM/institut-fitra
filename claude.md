@@ -96,7 +96,7 @@ Program (template)
 | `program_levels` | program_id, level_number (≥2), name, description, price, max_installments, schedule (JSON), teacher_id |
 | `program_level_activations` | program_level_id, class_id, **start_date, end_date**, activated_by, activated_at |
 | `settings` | key, value (dont stripe_secret_key, stripe_webhook_secret) |
-| `dashboard_alert_dismissals` | user_id, alert_type, dismissed_at — unique(user_id, alert_type) |
+| `dashboard_alert_dismissals` | user_id, alert_type, **mode** (hidden/deleted), dismissed_at — unique(user_id, alert_type) |
 
 **Format schedule** : `[{"day": "lundi", "start_time": "10:00", "end_time": "12:00"}]` — porté par `classes.schedule` (niveau 1) et `program_levels.schedule` / `program_level_activations.schedule` (niveaux 2+). Le programme **n'a plus** d'emploi du temps.
 
@@ -175,7 +175,7 @@ POST  /api/checkout/recovery
 ### Admin Dashboard & Users
 ```
 GET  /api/admin/dashboard/stats | recent-users | upcoming-sessions | recent-classes | recent-enrollments
-POST /api/admin/dashboard/alerts/dismiss | alerts/restore   # body: alert_type
+POST /api/admin/dashboard/alerts/dismiss | alerts/restore   # body: alert_type (+ mode: hidden|deleted)
 GET/POST/PUT/DELETE  /api/admin/users | /users/{id}
 GET  /api/admin/students/{student}/levels-history
 POST /api/contact
@@ -240,9 +240,12 @@ POST  /api/student/tracking/{id}/submit
 - Page admin : classes groupées par programme, arborescence parent→enfants
 
 ### Tableau de bord admin — « Actions requises »
-- Chaque carte d'alerte (`failed_payments`, `sessions_without_replay`, `unread_messages`) porte un ✕ qui la masque **définitivement pour l'admin connecté** (`dashboard_alert_dismissals`, unique par user + type). Le masquage persiste même si de nouveaux éléments arrivent.
-- `GET /admin/dashboard/alerts` neutralise les types masqués (liste vidée + compteur à 0) et renvoie `dismissed: string[]`. Le filtrage est appliqué **hors du cache** `dashboard_alerts` (2 min), qui reste global.
-- Ligne discrète sous la grille : « N alerte(s) masquée(s) » avec un bouton par type pour réafficher (`POST .../alerts/restore`).
+- Chaque carte d'alerte (`failed_payments`, `sessions_without_replay`, `unread_messages`) porte un menu ⋮ avec deux actions, **par admin connecté** (`dashboard_alert_dismissals`, unique par user + type) :
+  - **Masquer** (`mode = hidden`) : la carte disparaît mais reste réaffichable
+  - **Supprimer définitivement** (`mode = deleted`) : la carte disparaît sans retour possible (`confirm()` avant l'appel ; `restore` renvoie 422 sur une alerte supprimée)
+- Dans les deux cas le retrait persiste même si de nouveaux éléments arrivent.
+- `GET /admin/dashboard/alerts` neutralise les types retirés (liste vidée + compteur à 0) et renvoie `dismissed: string[]` (tous les types retirés → le frontend cache la carte) et `restorable: string[]` (les `hidden` seuls → ligne de réaffichage). Le filtrage est appliqué **hors du cache** `dashboard_alerts` (2 min), qui reste global.
+- Ligne discrète sous la grille : « N alerte(s) masquée(s) » avec un bouton par type pour réafficher (`POST .../alerts/restore`). Les alertes supprimées n'y figurent pas.
 
 ### Commandes manuelles (admin)
 - `POST /api/admin/orders/manual` : `class_id` **obligatoire** — le `default_class_id` du programme n'est pas utilisé

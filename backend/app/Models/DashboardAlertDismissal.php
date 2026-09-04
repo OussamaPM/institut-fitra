@@ -18,9 +18,19 @@ class DashboardAlertDismissal extends Model
         'unread_messages',
     ];
 
+    /**
+     * Modes de retrait : masquée (réaffichable) ou supprimée définitivement.
+     */
+    public const MODE_HIDDEN = 'hidden';
+
+    public const MODE_DELETED = 'deleted';
+
+    public const MODES = [self::MODE_HIDDEN, self::MODE_DELETED];
+
     protected $fillable = [
         'user_id',
         'alert_type',
+        'mode',
         'dismissed_at',
     ];
 

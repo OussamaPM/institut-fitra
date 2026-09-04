@@ -57,7 +57,8 @@ class DashboardAlertTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonPath('failed_payments_count', 1)
-            ->assertJsonPath('dismissed', []);
+            ->assertJsonPath('dismissed', [])
+            ->assertJsonPath('restorable', []);
     }
 
     public function test_admin_can_dismiss_an_alert_type(): void
@@ -72,6 +73,7 @@ class DashboardAlertTest extends TestCase
         $this->assertDatabaseHas('dashboard_alert_dismissals', [
             'user_id' => $admin->id,
             'alert_type' => 'failed_payments',
+            'mode' => 'hidden',
         ]);
 
         Cache::flush();
@@ -80,7 +82,91 @@ class DashboardAlertTest extends TestCase
             ->assertStatus(200)
             ->assertJsonPath('failed_payments_count', 0)
             ->assertJsonPath('failed_payments', [])
-            ->assertJsonPath('dismissed', ['failed_payments']);
+            ->assertJsonPath('dismissed', ['failed_payments'])
+            ->assertJsonPath('restorable', ['failed_payments']);
+    }
+
+    public function test_admin_can_delete_an_alert_permanently(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->createFailedPayment();
+
+        $this->actingAs($admin)
+            ->postJson('/api/admin/dashboard/alerts/dismiss', [
+                'alert_type' => 'failed_payments',
+                'mode' => 'deleted',
+            ])
+            ->assertStatus(200)
+            ->assertJson(['message' => 'Alerte supprimée définitivement.']);
+
+        $this->assertDatabaseHas('dashboard_alert_dismissals', [
+            'user_id' => $admin->id,
+            'alert_type' => 'failed_payments',
+            'mode' => 'deleted',
+        ]);
+
+        Cache::flush();
+
+        // Neutralisée comme une alerte masquée, mais sans possibilité de retour
+        $this->actingAs($admin)->getJson('/api/admin/dashboard/alerts')
+            ->assertJsonPath('failed_payments_count', 0)
+            ->assertJsonPath('dismissed', ['failed_payments'])
+            ->assertJsonPath('restorable', []);
+    }
+
+    public function test_deleted_alert_cannot_be_restored(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->createFailedPayment();
+
+        $this->actingAs($admin)
+            ->postJson('/api/admin/dashboard/alerts/dismiss', [
+                'alert_type' => 'failed_payments',
+                'mode' => 'deleted',
+            ]);
+
+        $this->actingAs($admin)
+            ->postJson('/api/admin/dashboard/alerts/restore', ['alert_type' => 'failed_payments'])
+            ->assertStatus(422);
+
+        $this->assertDatabaseHas('dashboard_alert_dismissals', [
+            'user_id' => $admin->id,
+            'alert_type' => 'failed_payments',
+            'mode' => 'deleted',
+        ]);
+
+        Cache::flush();
+
+        $this->actingAs($admin)->getJson('/api/admin/dashboard/alerts')
+            ->assertJsonPath('failed_payments_count', 0);
+    }
+
+    public function test_dismiss_defaults_to_hidden_mode(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->postJson('/api/admin/dashboard/alerts/dismiss', ['alert_type' => 'sessions_without_replay'])
+            ->assertStatus(200)
+            ->assertJson(['message' => 'Alerte masquée.']);
+
+        $this->assertDatabaseHas('dashboard_alert_dismissals', [
+            'alert_type' => 'sessions_without_replay',
+            'mode' => 'hidden',
+        ]);
+    }
+
+    public function test_dismiss_rejects_unknown_mode(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->postJson('/api/admin/dashboard/alerts/dismiss', [
+                'alert_type' => 'failed_payments',
+                'mode' => 'nuked',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['mode']);
     }
 
     public function test_dismissal_is_permanent_even_when_new_items_arrive(): void
@@ -136,7 +222,8 @@ class DashboardAlertTest extends TestCase
 
         $this->actingAs($admin)->getJson('/api/admin/dashboard/alerts')
             ->assertJsonPath('failed_payments_count', 1)
-            ->assertJsonPath('dismissed', []);
+            ->assertJsonPath('dismissed', [])
+            ->assertJsonPath('restorable', []);
     }
 
     public function test_dismiss_rejects_unknown_alert_type(): void

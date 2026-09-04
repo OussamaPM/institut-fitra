@@ -239,13 +239,12 @@ class DashboardController extends Controller
             ];
         });
 
-        $dismissed = DashboardAlertDismissal::where('user_id', Auth::id())
-            ->pluck('alert_type')
-            ->all();
+        $dismissals = DashboardAlertDismissal::where('user_id', Auth::id())
+            ->pluck('mode', 'alert_type');
 
-        // Les alertes masquées restent connues du frontend (pour le bouton
-        // « Réafficher ») mais sont neutralisées dans le payload principal.
-        foreach ($dismissed as $type) {
+        // Toute alerte retirée (masquée ou supprimée) est neutralisée dans le
+        // payload principal ; seules les masquées restent réaffichables.
+        foreach ($dismissals->keys() as $type) {
             if ($type === 'failed_payments') {
                 $alerts['failed_payments'] = [];
                 $alerts['failed_payments_count'] = 0;
@@ -255,30 +254,44 @@ class DashboardController extends Controller
             }
         }
 
-        $alerts['dismissed'] = $dismissed;
+        $alerts['dismissed'] = $dismissals->keys()->values()->all();
+        $alerts['restorable'] = $dismissals
+            ->filter(fn ($mode) => $mode === DashboardAlertDismissal::MODE_HIDDEN)
+            ->keys()
+            ->values()
+            ->all();
 
         return response()->json($alerts);
     }
 
     /**
-     * Masquer définitivement un type d'alerte pour l'admin connecté
+     * Retirer un type d'alerte du tableau de bord de l'admin connecté.
+     * `mode` = hidden (masquée, réaffichable) ou deleted (supprimée définitivement).
      */
     public function dismissAlert(Request $request): JsonResponse
     {
         $request->validate([
             'alert_type' => ['required', 'string', Rule::in(DashboardAlertDismissal::TYPES)],
+            'mode' => ['nullable', 'string', Rule::in(DashboardAlertDismissal::MODES)],
         ]);
+
+        $mode = $request->input('mode', DashboardAlertDismissal::MODE_HIDDEN);
 
         DashboardAlertDismissal::updateOrCreate(
             ['user_id' => Auth::id(), 'alert_type' => $request->alert_type],
-            ['dismissed_at' => now()],
+            ['mode' => $mode, 'dismissed_at' => now()],
         );
 
-        return response()->json(['message' => 'Alerte masquée.']);
+        return response()->json([
+            'message' => $mode === DashboardAlertDismissal::MODE_DELETED
+                ? 'Alerte supprimée définitivement.'
+                : 'Alerte masquée.',
+        ]);
     }
 
     /**
-     * Réafficher un type d'alerte masqué
+     * Réafficher un type d'alerte masqué. Une alerte supprimée définitivement
+     * ne peut pas être restaurée.
      */
     public function restoreAlert(Request $request): JsonResponse
     {
@@ -286,9 +299,17 @@ class DashboardController extends Controller
             'alert_type' => ['required', 'string', Rule::in(DashboardAlertDismissal::TYPES)],
         ]);
 
-        DashboardAlertDismissal::where('user_id', Auth::id())
+        $dismissal = DashboardAlertDismissal::where('user_id', Auth::id())
             ->where('alert_type', $request->alert_type)
-            ->delete();
+            ->first();
+
+        if ($dismissal?->mode === DashboardAlertDismissal::MODE_DELETED) {
+            return response()->json([
+                'message' => 'Cette alerte a été supprimée définitivement et ne peut pas être réaffichée.',
+            ], 422);
+        }
+
+        $dismissal?->delete();
 
         return response()->json(['message' => 'Alerte réaffichée.']);
     }
