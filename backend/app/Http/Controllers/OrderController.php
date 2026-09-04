@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Mail\EnrollmentConfirmationMail;
+use App\Mail\NewAccountCredentialsMail;
+use App\Mail\ReinscriptionConfirmationMail;
 use App\Models\Enrollment;
 use App\Models\Order;
 use App\Models\OrderPayment;
@@ -16,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class OrderController extends Controller
@@ -150,6 +154,10 @@ class OrderController extends Controller
 
     /**
      * Créer une commande manuelle (mode Free) - Admin
+     *
+     * Les emails (identifiants du nouveau compte, confirmation d'inscription ou
+     * de réinscription) sont préparés dans la transaction et envoyés seulement
+     * après le commit, comme dans le flux Stripe.
      */
     public function storeManual(Request $request): JsonResponse
     {
@@ -166,8 +174,11 @@ class OrderController extends Controller
             'admin_notes' => 'nullable|string',
         ]);
 
+        /** @var array<int, array{to: string, mail: \Illuminate\Mail\Mailable}> */
+        $pendingMails = [];
+
         try {
-            return DB::transaction(function () use ($request) {
+            $response = DB::transaction(function () use ($request, &$pendingMails) {
                 $program = Program::findOrFail($request->program_id);
                 $classId = (int) $request->class_id;
                 $paymentMethod = $request->payment_method;
@@ -187,10 +198,10 @@ class OrderController extends Controller
                     }
 
                     // L'élève doit déjà être inscrit à cette classe
-                    $enrolled = Enrollment::where('student_id', $student->id)
+                    $enrollment = Enrollment::where('student_id', $student->id)
                         ->where('class_id', $classId)
-                        ->exists();
-                    if (! $enrolled) {
+                        ->first();
+                    if (! $enrollment) {
                         return response()->json([
                             'message' => 'Cet élève n\'est pas inscrit à cette classe. Inscrivez-le d\'abord au niveau de base.',
                         ], 422);
@@ -234,6 +245,13 @@ class OrderController extends Controller
                         'paid_at' => now(),
                     ]);
 
+                    // Montée de niveau = réinscription côté élève
+                    $enrollment->load('class.program');
+                    $pendingMails[] = [
+                        'to' => $student->email,
+                        'mail' => new ReinscriptionConfirmationMail($student, $enrollment, $level),
+                    ];
+
                     $order->load(['student.studentProfile', 'program', 'programLevel', 'class', 'payments']);
 
                     return response()->json([
@@ -260,10 +278,12 @@ class OrderController extends Controller
 
                     $student = $existingUser;
                 } else {
-                    // Créer le compte élève
+                    // Créer le compte élève avec un mot de passe temporaire envoyé par email
+                    $temporaryPassword = Str::random(12);
+
                     $student = User::create([
                         'email' => $request->customer_email,
-                        'password' => Hash::make(Str::random(16)),
+                        'password' => Hash::make($temporaryPassword),
                         'role' => 'student',
                         'first_name' => $request->customer_first_name,
                         'last_name' => $request->customer_last_name,
@@ -276,6 +296,11 @@ class OrderController extends Controller
                         'last_name' => $request->customer_last_name,
                         'gender' => $request->customer_gender,
                     ]);
+
+                    $pendingMails[] = [
+                        'to' => $student->email,
+                        'mail' => new NewAccountCredentialsMail($student, $temporaryPassword),
+                    ];
                 }
 
                 // Déterminer le montant (personnalisé ou prix du programme)
@@ -306,12 +331,18 @@ class OrderController extends Controller
                 ]);
 
                 // Créer l'inscription à la classe
-                Enrollment::create([
+                $enrollment = Enrollment::create([
                     'student_id' => $student->id,
                     'class_id' => $classId,
                     'status' => 'active',
                     'enrolled_at' => now(),
                 ]);
+
+                $enrollment->load('class.program');
+                $pendingMails[] = [
+                    'to' => $student->email,
+                    'mail' => new EnrollmentConfirmationMail($student, $enrollment),
+                ];
 
                 $order->load(['student.studentProfile', 'program', 'class', 'payments']);
 
@@ -320,6 +351,19 @@ class OrderController extends Controller
                     'order' => $order,
                 ], 201);
             });
+
+            // Envoi après commit : un email en échec ne doit pas annuler l'inscription
+            if ($response->getStatusCode() === 201) {
+                foreach ($pendingMails as $pending) {
+                    try {
+                        Mail::to($pending['to'])->send($pending['mail']);
+                    } catch (\Exception $e) {
+                        Log::error('Manual order email error ('.$pending['mail']::class.'): '.$e->getMessage());
+                    }
+                }
+            }
+
+            return $response;
 
         } catch (\Exception $e) {
             Log::error('Order storeManual error: '.$e->getMessage());

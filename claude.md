@@ -248,6 +248,11 @@ POST  /api/student/tracking/{id}/submit
 - `POST /api/admin/orders/manual` : `class_id` **obligatoire** — le `default_class_id` du programme n'est pas utilisé
 - **Niveau de base** (sans `program_level_id`) : crée l'utilisateur élève si l'email n'existe pas, sinon vérifie qu'il n'est pas déjà inscrit à cette classe ; crée l'inscription. `customer_gender` requis (`required_without:program_level_id`)
 - **Montée de niveau** (avec `program_level_id`) : l'élève doit déjà exister **et** être inscrit à la classe (niveau de base). Pas de nouvelle inscription, crée juste une commande avec `level_number` + `program_level_id` (statut `paid`). Refus si déjà une commande `paid`/`partial` pour ce niveau. Paiement `free` (gratuit) ou `cash` (espèces). Le frontend propose une **liste déroulante des élèves inscrits** à la classe au lieu de la saisie manuelle.
+- **Emails envoyés** (identiques au flux Stripe, préparés dans la transaction et envoyés **après le commit** — un email en échec n'annule pas l'inscription) :
+  - nouveau compte créé → `NewAccountCredentialsMail` (mot de passe temporaire `Str::random(12)`) **+** `EnrollmentConfirmationMail`
+  - compte existant inscrit à une nouvelle classe → `EnrollmentConfirmationMail` seul
+  - montée de niveau (`program_level_id`) → `ReinscriptionConfirmationMail`
+  - refus 422 (déjà inscrit, élève introuvable…) → aucun email
 - Conséquence côté élève : commande comptée par `ProgramLevelService` → le bloc de réinscription disparaît, ligne "Gratuit" affichée dans le suivi de paiement (`payment-history` renvoie `payment_method`)
 
 ### Liste des élèves par niveau (admin)

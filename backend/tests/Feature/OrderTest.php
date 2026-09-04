@@ -4,12 +4,19 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Mail\EnrollmentConfirmationMail;
+use App\Mail\NewAccountCredentialsMail;
+use App\Mail\ReinscriptionConfirmationMail;
 use App\Models\ClassModel;
+use App\Models\Enrollment;
 use App\Models\Order;
 use App\Models\OrderPayment;
 use App\Models\Program;
+use App\Models\ProgramLevel;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class OrderTest extends TestCase
@@ -293,6 +300,147 @@ class OrderTest extends TestCase
             ->assertJson([
                 'message' => 'Cet élève est déjà inscrit à cette classe.',
             ]);
+    }
+
+    /**
+     * Un nouvel élève ajouté manuellement reçoit ses identifiants + la confirmation d'inscription.
+     */
+    public function test_manual_order_sends_credentials_and_enrollment_emails_to_new_student(): void
+    {
+        Mail::fake();
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $program = Program::factory()->create(['created_by' => $teacher->id]);
+        $class = ClassModel::factory()->create(['program_id' => $program->id]);
+
+        $this->actingAs($admin)
+            ->postJson('/api/admin/orders/manual', [
+                'program_id' => $program->id,
+                'class_id' => $class->id,
+                'customer_email' => 'new.student@test.com',
+                'customer_first_name' => 'New',
+                'customer_last_name' => 'Student',
+                'customer_gender' => 'male',
+                'payment_method' => 'free',
+            ])
+            ->assertStatus(201);
+
+        Mail::assertSent(NewAccountCredentialsMail::class, fn ($mail) => $mail->hasTo('new.student@test.com'));
+        Mail::assertSent(EnrollmentConfirmationMail::class, fn ($mail) => $mail->hasTo('new.student@test.com'));
+
+        // Le mot de passe envoyé doit être celui du compte créé
+        $student = User::where('email', 'new.student@test.com')->first();
+        Mail::assertSent(NewAccountCredentialsMail::class, function ($mail) use ($student) {
+            return Hash::check($mail->temporaryPassword, $student->password);
+        });
+    }
+
+    /**
+     * Un élève existant ajouté à une nouvelle classe reçoit la confirmation, pas de nouveaux identifiants.
+     */
+    public function test_manual_order_sends_only_enrollment_email_to_existing_student(): void
+    {
+        Mail::fake();
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $student = User::factory()->create(['role' => 'student', 'email' => 'existing@test.com']);
+        $program = Program::factory()->create(['created_by' => $teacher->id]);
+        $class = ClassModel::factory()->create(['program_id' => $program->id]);
+
+        $this->actingAs($admin)
+            ->postJson('/api/admin/orders/manual', [
+                'program_id' => $program->id,
+                'class_id' => $class->id,
+                'customer_email' => $student->email,
+                'customer_first_name' => $student->first_name,
+                'customer_last_name' => $student->last_name,
+                'customer_gender' => 'male',
+                'payment_method' => 'free',
+            ])
+            ->assertStatus(201);
+
+        Mail::assertSent(EnrollmentConfirmationMail::class, fn ($mail) => $mail->hasTo('existing@test.com'));
+        Mail::assertNotSent(NewAccountCredentialsMail::class);
+    }
+
+    /**
+     * Une montée de niveau manuelle envoie l'email de réinscription.
+     */
+    public function test_manual_level_up_sends_reinscription_email(): void
+    {
+        Mail::fake();
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $student = User::factory()->create(['role' => 'student', 'email' => 'level.up@test.com']);
+        $program = Program::factory()->create(['created_by' => $teacher->id]);
+        $class = ClassModel::factory()->create(['program_id' => $program->id]);
+
+        Enrollment::factory()->create([
+            'student_id' => $student->id,
+            'class_id' => $class->id,
+            'status' => 'active',
+        ]);
+
+        $level = ProgramLevel::create([
+            'program_id' => $program->id,
+            'level_number' => 2,
+            'name' => 'Niveau 2',
+            'price' => 300,
+            'max_installments' => 1,
+        ]);
+
+        $this->actingAs($admin)
+            ->postJson('/api/admin/orders/manual', [
+                'program_id' => $program->id,
+                'class_id' => $class->id,
+                'program_level_id' => $level->id,
+                'customer_email' => $student->email,
+                'customer_first_name' => $student->first_name,
+                'customer_last_name' => $student->last_name,
+                'payment_method' => 'free',
+            ])
+            ->assertStatus(201);
+
+        Mail::assertSent(ReinscriptionConfirmationMail::class, fn ($mail) => $mail->hasTo('level.up@test.com'));
+        Mail::assertNotSent(EnrollmentConfirmationMail::class);
+        Mail::assertNotSent(NewAccountCredentialsMail::class);
+    }
+
+    /**
+     * Aucun email ne part si l'ajout manuel est refusé (élève déjà inscrit).
+     */
+    public function test_manual_order_sends_no_email_when_rejected(): void
+    {
+        Mail::fake();
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $student = User::factory()->create(['role' => 'student', 'email' => 'already@test.com']);
+        $program = Program::factory()->create(['created_by' => $teacher->id]);
+        $class = ClassModel::factory()->create(['program_id' => $program->id]);
+
+        Enrollment::factory()->create([
+            'student_id' => $student->id,
+            'class_id' => $class->id,
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)
+            ->postJson('/api/admin/orders/manual', [
+                'program_id' => $program->id,
+                'class_id' => $class->id,
+                'customer_email' => $student->email,
+                'customer_first_name' => $student->first_name,
+                'customer_last_name' => $student->last_name,
+                'customer_gender' => 'male',
+                'payment_method' => 'free',
+            ])
+            ->assertStatus(422);
+
+        Mail::assertNothingSent();
     }
 
     /**
