@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\LibraryFolderController;
+use App\Http\Controllers\Admin\LibraryItemController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
@@ -13,20 +15,22 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\ContactMessageController;
 use App\Http\Controllers\EnrollmentController;
+use App\Http\Controllers\LibraryController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MessageGroupController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\ProgramLevelController;
+use App\Http\Controllers\QuizController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SessionMaterialController;
 use App\Http\Controllers\SettingController;
+use App\Http\Controllers\StudentLibraryController;
 use App\Http\Controllers\StudentProfileController;
+use App\Http\Controllers\StudentQuizController;
 use App\Http\Controllers\StudentReinscriptionController;
 use App\Http\Controllers\StudentTrackingController;
-use App\Http\Controllers\QuizController;
-use App\Http\Controllers\StudentQuizController;
 use App\Http\Controllers\TrackingFormController;
 use Illuminate\Support\Facades\Route;
 
@@ -64,6 +68,14 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/student/profile/photo', [StudentProfileController::class, 'updatePhoto']);
         Route::delete('/student/profile/photo', [StudentProfileController::class, 'removePhoto']);
 
+        // Bibliothèque (élève) — filtrée par LibraryFolder::scopeVisibleToStudent
+        Route::get('/student/library/folders', [StudentLibraryController::class, 'index']);
+        // ->missing() : sans cela, le route-model-binding renvoie « No query results for
+        // model » sur un id inexistant, ce qui distingue « existe mais interdit » de
+        // « n'existe pas » et permet de cartographier la bibliothèque.
+        Route::get('/student/library/folders/{folder}/items', [StudentLibraryController::class, 'items'])
+            ->missing(fn () => response()->json(['message' => 'Dossier introuvable.'], 404));
+
         // Student quizzes
         Route::get('/student/quizzes', [StudentQuizController::class, 'index']);
         Route::get('/student/quizzes/{quiz}', [StudentQuizController::class, 'show']);
@@ -97,6 +109,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
         // Stripe Customer Portal (Gestion carte bancaire)
         Route::post('/student/stripe-portal', [CheckoutController::class, 'createPortalSession']);
     });
+
+    // Bibliothèque — téléchargement d'un document (contrôle d'accès dans le contrôleur)
+    Route::get('/library/items/{item}/download', [LibraryController::class, 'download'])
+        ->missing(fn () => response()->json(['message' => 'Document introuvable.'], 404));
 
     // Messaging routes - All authenticated users
     Route::prefix('messages')->group(function (): void {
@@ -240,6 +256,21 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
         // Student levels history (for admin - student profile)
         Route::get('/admin/students/{student}/levels-history', [StudentReinscriptionController::class, 'studentHistory']);
+
+        // Bibliothèque (admin)
+        Route::get('/admin/library/access-options', [LibraryFolderController::class, 'accessOptions']);
+        Route::get('/admin/library/folders', [LibraryFolderController::class, 'index']);
+        Route::post('/admin/library/folders', [LibraryFolderController::class, 'store']);
+        Route::get('/admin/library/folders/{folder}', [LibraryFolderController::class, 'show']);
+        Route::put('/admin/library/folders/{folder}', [LibraryFolderController::class, 'update']);
+        Route::delete('/admin/library/folders/{folder}', [LibraryFolderController::class, 'destroy']);
+        Route::post('/admin/library/folders/{folder}/status', [LibraryFolderController::class, 'updateStatus']);
+
+        Route::get('/admin/library/folders/{folder}/items', [LibraryItemController::class, 'index']);
+        Route::post('/admin/library/folders/{folder}/items', [LibraryItemController::class, 'store']);
+        Route::put('/admin/library/items/{item}', [LibraryItemController::class, 'update']);
+        Route::delete('/admin/library/items/{item}', [LibraryItemController::class, 'destroy']);
+        Route::post('/admin/library/items/{item}/move', [LibraryItemController::class, 'move']);
 
         // Settings management (Configuration)
         Route::get('/admin/settings', [SettingController::class, 'index']);

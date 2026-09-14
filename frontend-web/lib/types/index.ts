@@ -653,3 +653,77 @@ export interface SessionMaterial {
   created_at: string;
   updated_at: string;
 }
+
+// ============================================
+// BIBLIOTHÈQUE
+// ============================================
+
+export type LibraryCategory = 'media' | 'resource';
+export type LibraryStatus = 'draft' | 'published';
+export type LibraryItemType = 'video' | 'audio' | 'document';
+
+/** Une règle d'accès : une classe, et le niveau ciblé (1 = tous les inscrits). */
+export interface LibraryFolderAccess {
+  id: number;
+  library_folder_id: number;
+  class_id: number;
+  level_number: number;
+  class?: Pick<ClassModel, 'id' | 'name' | 'academic_year'>;
+}
+
+export interface LibraryFolder {
+  id: number;
+  category: LibraryCategory;
+  title: string;
+  status: LibraryStatus;
+  is_published: boolean;
+  is_public: boolean;
+  created_by: number | null;
+  items_count?: number;
+  accesses?: LibraryFolderAccess[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LibraryItem {
+  id: number;
+  library_folder_id: number;
+  title: string;
+  type: LibraryItemType;
+  embed_url: string | null;
+  file_path: string | null;
+  original_name: string | null;
+  file_size: number | null;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Niveau proposé au ciblage : uniquement ceux réellement activés sur la classe. */
+export interface LibraryAccessLevelOption {
+  level_number: number;
+  label: string;
+}
+
+export interface LibraryAccessOption {
+  class_id: number;
+  class_name: string;
+  academic_year: string;
+  program_id: number | null;
+  program_name: string | null;
+  levels: LibraryAccessLevelOption[];
+}
+
+export interface SaveLibraryFolderData {
+  category?: LibraryCategory;
+  title: string;
+  is_public: boolean;
+  accesses?: { class_id: number; level_number: number }[];
+}
+
+export interface SaveLibraryItemData {
+  title: string;
+  type?: 'video' | 'audio';
+  embed_url?: string;
+  file?: File;
+}

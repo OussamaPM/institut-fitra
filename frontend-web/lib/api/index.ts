@@ -12,4 +12,5 @@ export { default as trackingFormsApi, studentTrackingApi } from './tracking-form
 export { default as quizzesApi } from './quizzes';
 export { default as settingsApi } from './settings';
 export { default as failedPaymentsApi } from './failed-payments';
+export { default as libraryApi } from './library';
 export { default as apiClient } from './client';

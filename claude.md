@@ -95,6 +95,9 @@ Program (template)
 | `order_payments` | order_id, amount, installment_number, status, scheduled_at, paid_at, stripe_payment_intent_id, recovery_for_payment_id, is_recovery_payment |
 | `program_levels` | program_id, level_number (≥2), name, description, price, max_installments, schedule (JSON), teacher_id |
 | `program_level_activations` | program_level_id, class_id, **start_date, end_date**, activated_by, activated_at |
+| `library_folders` | category (media/resource), title, status (draft/published), is_public, created_by |
+| `library_folder_access` | library_folder_id, class_id, **level_number** (1 = base/inclusif, 2+ = niveau payé) — unique(folder, class, level) |
+| `library_items` | library_folder_id, title, type (video/audio/document), embed_url, file_path, original_name, file_size, **position** |
 | `settings` | key, value (dont stripe_secret_key, stripe_webhook_secret) |
 | `dashboard_alert_dismissals` | user_id, alert_type, **mode** (hidden/deleted), dismissed_at — unique(user_id, alert_type) |
 
@@ -172,6 +175,20 @@ POST  /api/student/stripe-portal
 POST  /api/checkout/recovery
 ```
 
+### Bibliothèque
+```
+GET/POST/PUT/DELETE  /api/admin/library/folders | /folders/{folder}
+POST                 /api/admin/library/folders/{folder}/status   # body: draft|published
+GET                  /api/admin/library/access-options            # classes + niveaux activés
+GET/POST             /api/admin/library/folders/{folder}/items    # paginé (10/page)
+PUT/DELETE           /api/admin/library/items/{item}
+POST                 /api/admin/library/items/{item}/move         # body: direction up|down
+
+GET   /api/student/library/folders?category=media|resource
+GET   /api/student/library/folders/{folder}/items                 # paginé (12/page)
+GET   /api/library/items/{item}/download                          # URL signée 5 min (JSON si XHR)
+```
+
 ### Admin Dashboard & Users
 ```
 GET  /api/admin/dashboard/stats | recent-users | upcoming-sessions | recent-classes | recent-enrollments
@@ -217,6 +234,15 @@ POST  /api/student/tracking/{id}/submit
 - **Source de vérité** : `ProgramLevelService::accessibleLevelIds($studentId, $classId)` → `[null, ...ids des niveaux payés]`. Le niveau de base (`program_level_id = null`) est accessible dès l'inscription ; un niveau supérieur l'est seulement si l'élève a une commande **`paid`/`partial`** pour ce niveau dans cette classe.
 - **Scope** `Session::scopeVisibleToStudent($studentId)` : inscrit à la classe **ET** (niveau de base **OU** commande payée pour ce niveau) — sous-requête corrélée sur `orders` (class_id + program_level_id), gère le multi-classes.
 - Appliqué aux **5 points d'accès élève** : `SessionController::index` + `show`, `SessionMaterialController::studentIndex` + `sessionMaterials` + `download`. Un élève niveau 1 ne voit **ni ne télécharge** les sessions/supports/replays d'un niveau non payé.
+
+### Bibliothèque — accès par classe ET par niveau
+- **Modèle d'accès distinct** de celui des sessions : il porte sur `library_folder_access` (classe + `level_number`), pas sur `program_level_id`. Source de vérité : `LibraryFolder::scopeVisibleToStudent`.
+- Un dossier est visible si **publié** ET (`is_public` OU ligne d'accès sur une classe où l'élève est **inscrit `active`** avec : `level_number = 1` → aucune commande exigée, le niveau 1 est **inclusif** ; `level_number >= 2` → commande `paid`/`partial` pour ce niveau **dans cette classe**).
+- Le niveau 1 s'appuie sur `enrollments` (pas `orders`) : couvre les élèves importés sans commande.
+- **Brouillon par défaut** ; publier un dossier sans destinataire est refusé. Un dossier **vide est masqué** côté élève.
+- **Médias = iframe uniquement** (aucun upload vidéo). L'URL est extraite du code embed collé (`LibraryService::extractEmbedUrl`, ancré sur `<iframe … src=`) ; seuls `https` hors domaines de l'institut, IP et hôtes locaux sont acceptés.
+- **Documents = PDF privés sur Spaces** (`uploadPrivateFile`, extension imposée côté serveur), servis par **URL signée 5 min**. `file_path` est `$hidden` : il n'est jamais sérialisé. Un dossier interdit répond **404** (jamais 403) pour empêcher l'énumération.
+- Ordre des items : colonne `position`, échange avec le voisin (`LibraryService::move`), tri `position, id` — le départage par id est indispensable en pagination.
 
 ### Replays vidéo
 - Backend calcule et retourne `replay_expires_at` et `replay_valid` (bool)
@@ -325,6 +351,10 @@ ClassModel { id, program_id, name, academic_year, start_date, end_date, status, 
 Session    { id, class_id, teacher_id, title, scheduled_at, duration_minutes, status, replay_url?, replay_validity_days?, replay_valid?, replay_expires_at?, class?, materials? }
 Order      { id, student_id, program_id, class_id, total_amount, installments_count, payment_method, status, level_number?, program_level_id? }
 OrderPayment { id, order_id, amount, installment_number, status, scheduled_at, paid_at, recovery_for_payment_id?, is_recovery_payment?, is_recovered? }
+LibraryFolder { id, category: 'media'|'resource', title, status: 'draft'|'published', is_published, is_public, items_count?, accesses? }
+LibraryItem   { id, library_folder_id, title, type: 'video'|'audio'|'document', embed_url?, original_name?, file_size?, position }
+LibraryFolderAccess { id, class_id, level_number, class? }
+LibraryAccessOption { class_id, class_name, program_name, levels: { level_number, label }[] }
 Message    { id, sender_id, receiver_id?, group_id?, content, attachment_path?, attachment_type?, attachment_url?, read_at?, sent_at }
 ```
 
@@ -336,7 +366,7 @@ Message    { id, sender_id, receiver_id?, group_id?, content, attachment_path?, 
 # Backend
 cd backend && php artisan serve --port=8001   # Port 8001
 php artisan migrate && php artisan db:seed
-php artisan test                               # 104 tests
+php artisan test                               # 315 tests
 ./vendor/bin/pint                              # Formatage
 
 # Frontend (vitrine + backoffice)
@@ -429,6 +459,11 @@ cd document-editor && npm run dev              # Port 3021
   - **Montée de niveau via l'ajout manuel** : sélecteur de niveau + liste déroulante des élèves inscrits, activation gratuite ou en espèces ; badge niveau sur la ligne de commande ; ligne "Gratuit" dans le suivi de paiement élève ; bloc de réinscription qui disparaît automatiquement
   - **Accès élève cloisonné par niveau** : sessions, supports et replays d'un niveau supérieur invisibles/non téléchargeables tant que l'élève n'a pas payé ce niveau (`Session::scopeVisibleToStudent`, `ProgramLevelService::accessibleLevelIds`) — couvert par 3 tests dédiés
 - **Stripe live** (✅ configuré en prod) : clés + webhook actifs ; favicon validé sur Google Search Console
+
+- **Bibliothèque** (14/09/2026) :
+  - Admin `/admin/library` : 2 catégories (Vidéos & Audios / Ressources), dossiers CRUD, ciblage d'accès par classe **et par niveau** (ou « Tout »), brouillon/publié, contenus réordonnables par flèches, pagination 10/page
+  - Élève `/student/library` : onglets Vidéo/Audio (défaut) et Documents, dossiers autorisés, lecteur intégré, documents en URL signée
+  - Cloisonnement couvert par 100 tests dédiés (dont non-fuite inter-élèves et anti-énumération)
 
 ### ⏳ À développer
 - **Phase 6** : Espace Professeur (API ready, frontend absent)

@@ -46,6 +46,52 @@ class ImageOptimizerService
     }
 
     /**
+     * Disque de stockage effectif.
+     *
+     * Spaces n'est pas configuré en développement local (bucket vide) : on retombe
+     * alors sur le disque public plutôt que de laisser l'adaptateur S3 lever une
+     * erreur interne. En production le bucket est défini, donc rien ne change.
+     */
+    public function storageDisk(): string
+    {
+        return config('filesystems.disks.spaces.bucket') ? 'spaces' : 'public';
+    }
+
+    /**
+     * Upload a file in PRIVATE visibility, with a server-controlled extension.
+     *
+     * Contrairement à uploadFile(), l'extension n'est jamais celle fournie par le
+     * client : elle déterminerait le Content-Type servi par le CDN, et un fichier
+     * accepté pour son contenu PDF mais nommé .html deviendrait une page active
+     * hébergée sur notre domaine.
+     *
+     * Le fichier n'étant pas public, il ne peut être servi que par une URL signée
+     * et expirante — voir temporaryUrl().
+     */
+    public function uploadPrivateFile(UploadedFile $file, string $folder, string $extension): string
+    {
+        $filename = $folder.'/'.Str::uuid().'.'.ltrim($extension, '.');
+        Storage::disk($this->storageDisk())->putFileAs('', $file, $filename, 'private');
+
+        return $filename;
+    }
+
+    /**
+     * Signed, expiring URL for a private file.
+     */
+    public function temporaryUrl(string $path, int $minutes = 5): string
+    {
+        $disk = Storage::disk($this->storageDisk());
+
+        // Le disque public local ne signe pas d'URL : on sert le lien direct en dev.
+        if (! method_exists($disk, 'temporaryUrl') || $this->storageDisk() === 'public') {
+            return $disk->url($path);
+        }
+
+        return $disk->temporaryUrl($path, now()->addMinutes($minutes));
+    }
+
+    /**
      * Delete a file from Spaces (falls back to public disk for legacy files).
      */
     public function delete(?string $path): void

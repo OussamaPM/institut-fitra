@@ -11,3 +11,11 @@ Thumbs.db
 
 # Images/assets bruts (pas nécessaires sur git)
 *.psd
+
+# Outils et fichiers de travail locaux
+composer.phar
+.claude/
+
+# Assets bruts et notes de travail à la racine
+*.png
+TESTS_SOUS_DOMAINES_FINAL.md
