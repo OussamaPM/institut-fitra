@@ -242,6 +242,7 @@ POST  /api/student/tracking/{id}/submit
 - **Brouillon par défaut** ; publier un dossier sans destinataire est refusé. Un dossier **vide est masqué** côté élève.
 - **Médias = iframe uniquement** (aucun upload vidéo). L'URL est extraite du code embed collé (`LibraryService::extractEmbedUrl`, ancré sur `<iframe … src=`) ; seuls `https` hors domaines de l'institut, IP et hôtes locaux sont acceptés.
 - **Documents = PDF privés sur Spaces** (`uploadPrivateFile`, extension imposée côté serveur), servis par **URL signée 5 min**. `file_path` est `$hidden` : il n'est jamais sérialisé. Un dossier interdit répond **404** (jamais 403) pour empêcher l'énumération.
+- **Dev local** : `ImageOptimizerService::storageDisk()` retombe sur le disque `public` quand `DO_SPACES_BUCKET` est vide (cas du `.env` local), avec une URL directe non signée. Les méthodes historiques (`uploadFile`, `uploadProfilePhoto`, `uploadMessageImage`, `url`, `delete`) gardent `spaces` en dur : leur comportement est inchangé.
 - Ordre des items : colonne `position`, échange avec le voisin (`LibraryService::move`), tri `position, id` — le départage par id est indispensable en pagination.
 
 ### Replays vidéo
