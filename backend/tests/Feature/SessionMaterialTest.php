@@ -113,6 +113,51 @@ class SessionMaterialTest extends TestCase
     }
 
     /**
+     * Un PDF volumineux (cours scanné) passe : la limite applicative est à 40 Mo.
+     */
+    public function test_material_accepts_large_pdf(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $program = Program::factory()->create(['created_by' => $teacher->id]);
+        $class = ClassModel::factory()->create(['program_id' => $program->id]);
+        $session = Session::factory()->create([
+            'class_id' => $class->id,
+            'teacher_id' => $teacher->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->post("/api/sessions/{$session->id}/materials", [
+                'title' => 'Cours scanné',
+                'file' => UploadedFile::fake()->create('cours.pdf', 35 * 1024, 'application/pdf'),
+            ], ['Accept' => 'application/json'])
+            ->assertStatus(201);
+    }
+
+    /**
+     * Au-delà de 40 Mo, le refus vient de l'application avec un message lisible.
+     */
+    public function test_material_rejects_file_over_40_mo(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $program = Program::factory()->create(['created_by' => $teacher->id]);
+        $class = ClassModel::factory()->create(['program_id' => $program->id]);
+        $session = Session::factory()->create([
+            'class_id' => $class->id,
+            'teacher_id' => $teacher->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->post("/api/sessions/{$session->id}/materials", [
+                'title' => 'Cours scanné',
+                'file' => UploadedFile::fake()->create('cours.pdf', 41 * 1024, 'application/pdf'),
+            ], ['Accept' => 'application/json'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['file']);
+    }
+
+    /**
      * Test material requires title.
      */
     public function test_material_requires_title(): void

@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\Storage;
 
 class SessionMaterialController extends Controller
 {
+    /** Taille maximale d'un support, en octets (40 Mo). */
+    public const MAX_FILE_BYTES = 40 * 1024 * 1024;
+
     public function __construct(
         private ImageOptimizerService $imageOptimizer,
         private ProgramLevelService $programLevelService,
@@ -137,6 +140,15 @@ class SessionMaterialController extends Controller
                 return response()->json([
                     'message' => 'Fichier invalide ou corrompu.',
                     'errors' => ['file' => ['Le fichier n\'a pas pu être uploadé. Code erreur: '.$file->getError()]],
+                ], 422);
+            }
+
+            // Sans ce contrôle, la seule limite serait celle de PHP (upload_max_filesize),
+            // qui tronque la requête avant Laravel et renvoie une erreur illisible.
+            if ($file->getSize() > self::MAX_FILE_BYTES) {
+                return response()->json([
+                    'message' => 'Le fichier ne doit pas dépasser 40 Mo.',
+                    'errors' => ['file' => ['Le fichier ne doit pas dépasser 40 Mo.']],
                 ], 422);
             }
 

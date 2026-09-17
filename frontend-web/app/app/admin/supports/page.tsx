@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { SessionMaterial, Session } from '@/lib/types';
-import materialsApi from '@/lib/api/materials';
+import materialsApi, { MAX_MATERIAL_BYTES as MAX_FILE_BYTES } from '@/lib/api/materials';
 import sessionsApi from '@/lib/api/sessions';
 import { Button, Badge, Modal } from '@/components/ui';
 import { format } from 'date-fns';
@@ -98,6 +98,14 @@ export default function SupportsPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Contrôlé ici aussi : au-delà des limites PHP, la requête est tronquée avant
+      // d'atteindre Laravel et l'erreur renvoyée serait incompréhensible.
+      if (file.size > MAX_FILE_BYTES) {
+        alert('Le fichier ne doit pas dépasser 40 Mo.');
+        e.target.value = '';
+        setSelectedFile(null);
+        return;
+      }
       setSelectedFile(file);
       if (!uploadTitle) {
         setUploadTitle(file.name.replace(/\.[^/.]+$/, ''));
@@ -127,7 +135,7 @@ export default function SupportsPage() {
 
     try {
       setUploading(true);
-      await materialsApi.upload(uploadSession.id, selectedFile, uploadTitle.trim());
+      await materialsApi.upload(uploadSession.id, uploadTitle.trim(), selectedFile);
       await fetchData();
       closeUploadModal();
     } catch (error: any) {

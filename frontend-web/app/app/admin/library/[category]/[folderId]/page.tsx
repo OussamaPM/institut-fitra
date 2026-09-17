@@ -12,8 +12,8 @@ const CATEGORY_LABELS: Record<LibraryCategory, string> = {
   resource: 'Ressources',
 };
 
-/** 20 Mo, aligné sur LibraryItemRequest::MAX_FILE_KB. */
-const MAX_FILE_BYTES = 20 * 1024 * 1024;
+/** 40 Mo, aligné sur LibraryItemRequest::MAX_FILE_KB. */
+const MAX_FILE_BYTES = 40 * 1024 * 1024;
 
 /** Taille lisible d'un document. */
 const formatSize = (bytes: number | null): string => {
@@ -120,7 +120,7 @@ export default function AdminLibraryFolderPage() {
     // Contrôlé ici aussi : au-delà des limites PHP, la requête est tronquée avant
     // d'atteindre Laravel et l'erreur renvoyée serait incompréhensible.
     if (file && file.size > MAX_FILE_BYTES) {
-      setFormError('Le fichier dépasse 20 Mo.');
+      setFormError('Le fichier dépasse 40 Mo.');
       return;
     }
     if (file && file.type !== 'application/pdf') {
@@ -449,7 +449,7 @@ export default function AdminLibraryFolderPage() {
                     onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                     className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:text-primary hover:file:bg-primary/20"
                   />
-                  <p className="mt-1 text-xs text-gray-500">Format PDF uniquement, 20 Mo maximum.</p>
+                  <p className="mt-1 text-xs text-gray-500">Format PDF uniquement, 40 Mo maximum.</p>
                 </>
               )}
             </div>

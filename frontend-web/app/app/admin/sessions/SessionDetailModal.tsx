@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Session, SessionMaterial, Quiz, QuizQuestion, QuizQuestionType } from '@/lib/types';
 import { Modal, Button, Badge } from '@/components/ui';
-import materialsApi from '@/lib/api/materials';
+import materialsApi, { MAX_MATERIAL_BYTES as MAX_FILE_BYTES } from '@/lib/api/materials';
 import quizzesApi from '@/lib/api/quizzes';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -241,6 +241,14 @@ export default function SessionDetailModal({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Contrôlé ici aussi : au-delà des limites PHP, la requête est tronquée avant
+      // d'atteindre Laravel et l'erreur renvoyée serait incompréhensible.
+      if (file.size > MAX_FILE_BYTES) {
+        alert('Le fichier ne doit pas dépasser 40 Mo.');
+        e.target.value = '';
+        setSelectedFile(null);
+        return;
+      }
       setSelectedFile(file);
       // Pré-remplir le titre avec le nom du fichier (sans extension)
       if (!uploadTitle) {

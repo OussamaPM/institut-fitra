@@ -5,6 +5,9 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 // Remove /api suffix for storage URLs
 const STORAGE_BASE_URL = API_BASE_URL.replace(/\/api$/, '');
 
+/** 40 Mo, aligné sur SessionMaterialController::MAX_FILE_BYTES. */
+export const MAX_MATERIAL_BYTES = 40 * 1024 * 1024;
+
 export const materialsApi = {
   /**
    * Get all materials (admin/teacher)

@@ -335,6 +335,35 @@ class LibraryApiTest extends TestCase
         Storage::disk('spaces')->assertExists($stored->file_path);
     }
 
+    /**
+     * La limite applicative doit laisser passer les PDF volumineux (cours scannés)
+     * tout en restant sous les limites PHP du serveur.
+     */
+    public function test_un_pdf_de_35_mo_est_accepte(): void
+    {
+        $folder = LibraryFolder::factory()->resource()->create();
+
+        $this->actingAs($this->admin)
+            ->post("/api/admin/library/folders/{$folder->id}/items", [
+                'title' => 'Cours scanné',
+                'file' => UploadedFile::fake()->create('cours.pdf', 35 * 1024, 'application/pdf'),
+            ], ['Accept' => 'application/json'])
+            ->assertCreated();
+    }
+
+    public function test_un_pdf_au_dela_de_40_mo_est_refuse(): void
+    {
+        $folder = LibraryFolder::factory()->resource()->create();
+
+        $this->actingAs($this->admin)
+            ->post("/api/admin/library/folders/{$folder->id}/items", [
+                'title' => 'Cours scanné',
+                'file' => UploadedFile::fake()->create('cours.pdf', 41 * 1024, 'application/pdf'),
+            ], ['Accept' => 'application/json'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('file');
+    }
+
     public function test_un_fichier_non_pdf_est_refuse(): void
     {
         $folder = LibraryFolder::factory()->resource()->create();

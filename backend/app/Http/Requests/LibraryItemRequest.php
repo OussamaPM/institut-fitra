@@ -13,8 +13,8 @@ use Illuminate\Validation\Rule;
 
 class LibraryItemRequest extends FormRequest
 {
-    /** Taille maximale d'un document, en kilo-octets (20 Mo). */
-    public const MAX_FILE_KB = 20480;
+    /** Taille maximale d'un document, en kilo-octets (40 Mo). */
+    public const MAX_FILE_KB = 40960;
 
     public function authorize(): bool
     {
@@ -168,7 +168,7 @@ class LibraryItemRequest extends FormRequest
             'file.file' => 'Le document envoyé est invalide.',
             'file.mimetypes' => 'Seuls les fichiers PDF sont acceptés.',
             'file.extensions' => 'Le fichier doit porter l\'extension .pdf.',
-            'file.max' => 'Le fichier ne doit pas dépasser 20 Mo.',
+            'file.max' => 'Le fichier ne doit pas dépasser 40 Mo.',
         ];
     }
 }
