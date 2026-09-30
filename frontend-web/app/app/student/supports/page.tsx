@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { SessionMaterial, Enrollment, Quiz } from '@/lib/types';
 import materialsApi from '@/lib/api/materials';
+import VideoPlayer from '@/components/video/VideoPlayer';
 import { openSignedUrl } from '@/lib/open-signed-url';
 import { enrollmentsApi } from '@/lib/api';
 import quizzesApi from '@/lib/api/quizzes';
@@ -456,14 +457,12 @@ export default function StudentSupportsPage() {
               </p>
             </div>
 
-            {/* Vimeo Iframe */}
+            {/* Lecteur du replay — reprend là où l'élève s'était arrêté */}
             <div className="aspect-video">
-              <iframe
+              <VideoPlayer
                 src={selectedSession.replay_url}
                 className="w-full h-full rounded-xl"
-                frameBorder="0"
                 allow="autoplay; fullscreen; picture-in-picture"
-                allowFullScreen
                 title={`Replay - ${selectedSession.title}`}
               />
             </div>

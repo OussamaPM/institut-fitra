@@ -6,6 +6,7 @@ import { Session } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { formatParis } from '@/lib/datetime';
+import VideoPlayer from '@/components/video/VideoPlayer';
 import { Play, X, Calendar, BookOpen, Clock, Search } from 'lucide-react';
 
 export default function StudentReplays() {
@@ -193,14 +194,12 @@ export default function StudentReplays() {
               </p>
             </div>
 
-            {/* Vimeo Iframe */}
+            {/* Lecteur du replay — reprend là où l'élève s'était arrêté */}
             <div className="aspect-video">
-              <iframe
+              <VideoPlayer
                 src={selectedSession.replay_url}
                 className="w-full h-full rounded-xl"
-                frameBorder="0"
                 allow="autoplay; fullscreen; picture-in-picture"
-                allowFullScreen
                 title={`Replay - ${selectedSession.title}`}
               />
             </div>

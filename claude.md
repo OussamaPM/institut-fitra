@@ -257,6 +257,17 @@ POST  /api/student/tracking/{id}/submit
 - **Bunny Stream** : format `https://player.mediadelivery.net/embed/{library_id}/{video_id}`
 - L'admin peut coller l'URL directe **ou** le code HTML embed complet — le frontend extrait automatiquement le `src`
 
+### Reprise de lecture des vidéos (`lib/video-progress.ts` + `components/video/VideoPlayer.tsx`)
+- Tous les lecteurs élève passent par **`<VideoPlayer>`** : 3 modales replay (`/student/replays`, `/student/supports`, `/student/planning`) et la bibliothèque (vidéo **et** audio).
+- La position est mémorisée dans le **localStorage de notre origine**, clé `fitra.video-progress.v1`. Volontairement **pas** le `rememberPosition` natif de Bunny : il écrit dans le stockage de l'iframe, que **Safari bloque** pour un contenu tiers. Le paramètre `rememberPosition=false` est donc **forcé** sur les URL Bunny, sinon deux mémoires se disputeraient la vidéo et « Repartir du début » renverrait au milieu.
+- **Conséquence assumée** : la reprise est par navigateur/appareil, elle ne suit pas l'élève d'un poste à l'autre.
+- **Capture** : postMessage. Bunny parle **player.js** (`{context:'player.js', event:'timeupdate', value:{seconds, duration}}`), Vimeo son propre dialecte (`{event, data:{seconds, duration}}`). Abonnement envoyé sur `ready` **et** sur le `load` de l'iframe. Écriture à la pause, toutes les 5 s en lecture, et au départ (démontage + `pagehide`).
+- **Reprise** : paramètre d'URL (`?t=125` Bunny, `#t=125s` Vimeo), appliqué par le lecteur avant la première image — pas de `setCurrentTime` en postMessage, qui courrait après l'état « prêt ».
+- **Clé de stockage** = hôte + chemin, **sans la query** : une URL Bunny signée porte `token`/`expires` qui changent à chaque chargement, les garder rendrait toute reprise impossible.
+- Règles : rien en dessous de **20 s**, effacement quand la vidéo est finie (≥ 97 % ou moins de 20 s de la fin), purge à 180 jours et 200 entrées. Lecteur ni Bunny ni Vimeo → mécanique désactivée, iframe inchangée.
+- Pastille « Reprise à 12:05 · Repartir du début » pendant 8 s (masquée sur l'audio, qu'elle recouvrirait).
+- **Non testable en local** : Bunny refuse les embeds depuis `app.localhost` (referrer). Vérification en préproduction/production.
+
 ### Niveaux multi-classes (`program_level_activations`)
 - `is_active` et `default_class_id` supprimés de `program_levels`
 - Un niveau peut être actif sur plusieurs classes simultanément

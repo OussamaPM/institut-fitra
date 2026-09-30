@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Button, Card } from '@/components/ui';
 import { libraryApi } from '@/lib/api/library';
+import VideoPlayer from '@/components/video/VideoPlayer';
 import { LibraryFolder, LibraryItem } from '@/lib/types';
 
 /** Taille lisible d'un document. */
@@ -174,7 +175,7 @@ export default function StudentLibraryFolderPage() {
             >
               {playingId === item.id && item.embed_url ? (
                 <div className={item.type === 'audio' ? 'bg-secondary p-4' : 'aspect-video'}>
-                  <iframe
+                  <VideoPlayer
                     src={item.embed_url}
                     title={item.title}
                     // allow-same-origin rend au lecteur SA propre origine (Bunny, Vimeo),
@@ -183,8 +184,9 @@ export default function StudentLibraryFolderPage() {
                     // refusés à la saisie, seul cas où ce token serait risqué.
                     sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"
                     allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
-                    allowFullScreen
                     className={`w-full border-0 ${item.type === 'audio' ? 'h-24 rounded-lg' : 'h-full'}`}
+                    // La pastille de reprise recouvrirait entièrement une barre audio.
+                    showResumeNotice={item.type !== 'audio'}
                   />
                 </div>
               ) : (

@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { sessionsApi, enrollmentsApi } from '@/lib/api';
 import materialsApi from '@/lib/api/materials';
+import VideoPlayer from '@/components/video/VideoPlayer';
 import { openSignedUrl } from '@/lib/open-signed-url';
 import quizzesApi from '@/lib/api/quizzes';
 import { Session, Enrollment, SessionMaterial, Quiz } from '@/lib/types';
@@ -357,14 +358,12 @@ function SessionDetailModal({ session, quiz, onClose }: SessionDetailModalProps)
               <h3 className="font-medium text-sm md:text-base truncate max-w-[200px] md:max-w-none">{session.title}</h3>
             </div>
 
-            {/* Vimeo Iframe */}
+            {/* Lecteur du replay — reprend là où l'élève s'était arrêté */}
             <div className="aspect-video">
-              <iframe
+              <VideoPlayer
                 src={session.replay_url}
                 className="w-full h-full rounded-xl"
-                frameBorder="0"
                 allow="autoplay; fullscreen; picture-in-picture"
-                allowFullScreen
                 title={`Replay - ${session.title}`}
               />
             </div>
