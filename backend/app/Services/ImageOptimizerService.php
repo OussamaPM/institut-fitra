@@ -92,6 +92,30 @@ class ImageOptimizerService
     }
 
     /**
+     * URL signée et expirante d'un fichier, quel que soit le disque qui le porte.
+     *
+     * Renvoie null quand le fichier est introuvable : l'appelant répond alors 404
+     * au lieu de livrer un lien mort.
+     *
+     * Les fichiers antérieurs à la migration Spaces sont restés sur le disque
+     * public, qui ne sait pas signer : on y sert l'URL directe.
+     */
+    public function signedUrlFor(string $path, int $minutes = 5): ?string
+    {
+        $disk = $this->storageDisk();
+
+        if (Storage::disk($disk)->exists($path)) {
+            return $this->temporaryUrl($path, $minutes);
+        }
+
+        if ($disk !== 'public' && Storage::disk('public')->exists($path)) {
+            return Storage::disk('public')->url($path);
+        }
+
+        return null;
+    }
+
+    /**
      * Delete a file from Spaces (falls back to public disk for legacy files).
      */
     public function delete(?string $path): void

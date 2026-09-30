@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { SessionMaterial, Session } from '@/lib/types';
 import materialsApi, { MAX_MATERIAL_BYTES as MAX_FILE_BYTES } from '@/lib/api/materials';
+import { openSignedUrl } from '@/lib/open-signed-url';
 import sessionsApi from '@/lib/api/sessions';
 import { Button, Badge, Modal } from '@/components/ui';
 import { format } from 'date-fns';
@@ -53,11 +54,25 @@ export default function SupportsPage() {
   const [uploadTitle, setUploadTitle] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  /** Télécharge un support : le lien signé est demandé à l'API puis suivi. */
+  const handleDownload = async (materialId: number) => {
+    setDownloadingId(materialId);
+    try {
+      await openSignedUrl(() => materialsApi.getDownloadUrl(materialId));
+    } catch (error) {
+      console.error('Error downloading material:', error);
+      alert('Impossible d\'ouvrir ce support.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -509,15 +524,14 @@ export default function SupportsPage() {
                       <div className="flex items-center justify-end gap-2">
                         {row.material && (
                           <>
-                            <a
-                              href={materialsApi.getFileUrl(row.material.file_path)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                            <button
+                              onClick={() => handleDownload(row.material!.id)}
+                              disabled={downloadingId === row.material.id}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-60"
                               title="Télécharger"
                             >
-                              <Download size={18} />
-                            </a>
+                              {downloadingId === row.material.id ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                            </button>
                             <button
                               onClick={() => handleDeleteMaterial(row.material!.id)}
                               className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"

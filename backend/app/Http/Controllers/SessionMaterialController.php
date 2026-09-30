@@ -12,12 +12,14 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class SessionMaterialController extends Controller
 {
     /** Taille maximale d'un support, en octets (40 Mo). */
     public const MAX_FILE_BYTES = 40 * 1024 * 1024;
+
+    /** Durée de validité du lien de téléchargement signé, en minutes. */
+    private const DOWNLOAD_LINK_MINUTES = 5;
 
     public function __construct(
         private ImageOptimizerService $imageOptimizer,
@@ -280,7 +282,16 @@ class SessionMaterialController extends Controller
     }
 
     /**
-     * Télécharger un fichier (redirige vers l'URL CDN Spaces)
+     * Sert un support via une URL signée et expirante — même principe que la bibliothèque.
+     *
+     * Le fichier vit sur Spaces : il n'existe plus sous /storage sur le domaine de
+     * l'API, le client ne peut donc pas fabriquer l'URL lui-même. Et un <a href> ne
+     * peut pas porter le jeton Sanctum : d'où la réponse JSON {url} pour un appel
+     * XHR — le client demande le lien puis navigue dessus — et la redirection 302
+     * pour un appel direct.
+     *
+     * Le lien expire, là où une URL CDN publique resterait valable indéfiniment et
+     * contournerait le cloisonnement par classe et par niveau vérifié ci-dessous.
      */
     public function download(Request $request, SessionMaterial $material): RedirectResponse|JsonResponse
     {
@@ -313,13 +324,22 @@ class SessionMaterialController extends Controller
                 ], 403);
             }
 
-            if (! Storage::disk('spaces')->exists($material->file_path)) {
+            $url = $this->imageOptimizer->signedUrlFor($material->file_path, self::DOWNLOAD_LINK_MINUTES);
+
+            if ($url === null) {
                 return response()->json([
                     'message' => 'Fichier non trouvé.',
                 ], 404);
             }
 
-            return redirect($this->imageOptimizer->url($material->file_path));
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'url' => $url,
+                    'title' => $material->title,
+                ]);
+            }
+
+            return redirect($url);
 
         } catch (\Exception $e) {
             Log::error('SessionMaterial download error: '.$e->getMessage());

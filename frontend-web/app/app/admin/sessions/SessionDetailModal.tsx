@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Session, SessionMaterial, Quiz, QuizQuestion, QuizQuestionType } from '@/lib/types';
 import { Modal, Button, Badge } from '@/components/ui';
 import materialsApi, { MAX_MATERIAL_BYTES as MAX_FILE_BYTES } from '@/lib/api/materials';
+import { openSignedUrl } from '@/lib/open-signed-url';
 import quizzesApi from '@/lib/api/quizzes';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -67,6 +68,7 @@ export default function SessionDetailModal({
   const [uploadTitle, setUploadTitle] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showUploadForm, setShowUploadForm] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Replay state
@@ -90,6 +92,19 @@ export default function SessionDetailModal({
     fetchMaterials();
     fetchQuiz();
   }, [session.id]);
+
+  /** Télécharge un support : le lien signé est demandé à l'API puis suivi. */
+  const handleDownload = async (materialId: number) => {
+    setDownloadingId(materialId);
+    try {
+      await openSignedUrl(() => materialsApi.getDownloadUrl(materialId));
+    } catch (error) {
+      console.error('Error downloading material:', error);
+      alert('Impossible d\'ouvrir ce support.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   const fetchMaterials = async () => {
     try {
@@ -576,14 +591,14 @@ export default function SessionDetailModal({
                         </div>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        <a
-                          href={materialsApi.getFileUrl(material.file_path)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                        <button
+                          onClick={() => handleDownload(material.id)}
+                          disabled={downloadingId === material.id}
+                          className="p-1 text-blue-600 hover:bg-blue-100 rounded transition-colors disabled:opacity-60"
+                          title="Télécharger"
                         >
-                          <Download size={14} />
-                        </a>
+                          {downloadingId === material.id ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                        </button>
                         <button
                           onClick={() => handleDeleteMaterial(material.id)}
                           className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"

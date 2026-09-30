@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { sessionsApi, enrollmentsApi } from '@/lib/api';
 import materialsApi from '@/lib/api/materials';
+import { openSignedUrl } from '@/lib/open-signed-url';
 import quizzesApi from '@/lib/api/quizzes';
 import { Session, Enrollment, SessionMaterial, Quiz } from '@/lib/types';
 import { format, parseISO, isAfter, isBefore, addHours, addMinutes, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, startOfWeek, endOfWeek, isToday } from 'date-fns';
@@ -34,6 +35,7 @@ function SessionDetailModal({ session, quiz, onClose }: SessionDetailModalProps)
   const [materials, setMaterials] = useState<SessionMaterial[]>([]);
   const [loadingMaterials, setLoadingMaterials] = useState(false);
   const [showReplayPlayer, setShowReplayPlayer] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (session) {
@@ -51,6 +53,19 @@ function SessionDetailModal({ session, quiz, onClose }: SessionDetailModalProps)
       console.error('Error fetching materials:', error);
     } finally {
       setLoadingMaterials(false);
+    }
+  };
+
+  /** Télécharge un support : le lien signé est demandé à l'API puis suivi. */
+  const handleDownload = async (materialId: number) => {
+    setDownloadingId(materialId);
+    try {
+      await openSignedUrl(() => materialsApi.getDownloadUrl(materialId));
+    } catch (error) {
+      console.error('Error downloading material:', error);
+      alert('Impossible d\'ouvrir ce support.');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -226,15 +241,14 @@ function SessionDetailModal({ session, quiz, onClose }: SessionDetailModalProps)
                         </p>
                       </div>
                     </div>
-                    <a
-                      href={materialsApi.getFileUrl(material.file_path)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2.5 text-primary hover:bg-primary/10 active:bg-primary/20 rounded-lg transition-colors flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    <button
+                      onClick={() => handleDownload(material.id)}
+                      disabled={downloadingId === material.id}
+                      className="p-2.5 text-primary hover:bg-primary/10 active:bg-primary/20 rounded-lg transition-colors flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-60"
                       title="Telecharger"
                     >
-                      <Download size={18} />
-                    </a>
+                      {downloadingId === material.id ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                    </button>
                   </div>
                 ))}
               </div>

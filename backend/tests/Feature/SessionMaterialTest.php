@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\ClassModel;
 use App\Models\Enrollment;
 use App\Models\Program;
+use App\Models\ProgramLevel;
 use App\Models\Session;
 use App\Models\SessionMaterial;
 use App\Models\User;
@@ -367,5 +368,177 @@ class SessionMaterialTest extends TestCase
     {
         $response = $this->getJson('/api/materials');
         $response->assertStatus(401);
+    }
+
+    /**
+     * Build an admin plus a material whose file really sits on the given disk.
+     *
+     * @return array{0: User, 1: SessionMaterial}
+     */
+    private function adminAndStoredMaterial(string $disk = 'spaces'): array
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $program = Program::factory()->create(['created_by' => $teacher->id]);
+        $class = ClassModel::factory()->create(['program_id' => $program->id]);
+        $session = Session::factory()->create([
+            'class_id' => $class->id,
+            'teacher_id' => $teacher->id,
+            'program_level_id' => null,
+        ]);
+
+        $material = SessionMaterial::factory()->create([
+            'session_id' => $session->id,
+            'uploaded_by' => $teacher->id,
+        ]);
+
+        Storage::disk($disk)->put($material->file_path, 'pdf');
+
+        return [$admin, $material];
+    }
+
+    /**
+     * An <a href> cannot carry the Sanctum token: the client asks for the URL over
+     * XHR then navigates to it. The JSON response is therefore the real path, and
+     * the file must never be reachable under /storage on the API domain.
+     */
+    public function test_download_returns_a_signed_url_as_json(): void
+    {
+        [$admin, $material] = $this->adminAndStoredMaterial();
+
+        $this->actingAs($admin)
+            ->getJson("/api/materials/{$material->id}/download")
+            ->assertOk()
+            ->assertJsonStructure(['url', 'title'])
+            ->assertJsonPath('title', $material->title);
+    }
+
+    /**
+     * Test a direct (non-XHR) call still redirects to the file.
+     */
+    public function test_download_redirects_on_a_direct_call(): void
+    {
+        [$admin, $material] = $this->adminAndStoredMaterial();
+
+        $this->actingAs($admin)
+            ->get("/api/materials/{$material->id}/download")
+            ->assertRedirect();
+    }
+
+    /**
+     * Files uploaded before the Spaces migration stayed on the public disk: they
+     * must keep being served instead of 404-ing.
+     */
+    public function test_download_falls_back_to_a_legacy_file_on_the_public_disk(): void
+    {
+        [$admin, $material] = $this->adminAndStoredMaterial('public');
+
+        $this->assertFalse(Storage::disk('spaces')->exists($material->file_path));
+
+        $this->actingAs($admin)
+            ->getJson("/api/materials/{$material->id}/download")
+            ->assertOk()
+            ->assertJsonStructure(['url']);
+    }
+
+    /**
+     * Test a material whose file is gone returns 404 rather than a dead link.
+     */
+    public function test_download_returns_404_when_the_file_is_missing(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $program = Program::factory()->create(['created_by' => $teacher->id]);
+        $class = ClassModel::factory()->create(['program_id' => $program->id]);
+        $session = Session::factory()->create([
+            'class_id' => $class->id,
+            'teacher_id' => $teacher->id,
+        ]);
+
+        $material = SessionMaterial::factory()->create([
+            'session_id' => $session->id,
+            'uploaded_by' => $teacher->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->getJson("/api/materials/{$material->id}/download")
+            ->assertStatus(404);
+    }
+
+    /**
+     * Test an enrolled student downloads a material of their class.
+     */
+    public function test_enrolled_student_can_download_material(): void
+    {
+        [, $material] = $this->adminAndStoredMaterial();
+
+        $student = User::factory()->create(['role' => 'student']);
+        Enrollment::create([
+            'student_id' => $student->id,
+            'class_id' => $material->session->class_id,
+            'status' => 'active',
+            'enrolled_at' => now(),
+        ]);
+
+        $this->actingAs($student)
+            ->getJson("/api/materials/{$material->id}/download")
+            ->assertOk()
+            ->assertJsonStructure(['url']);
+    }
+
+    /**
+     * Test a student who is not enrolled cannot download the material.
+     */
+    public function test_non_enrolled_student_cannot_download_material(): void
+    {
+        [, $material] = $this->adminAndStoredMaterial();
+
+        $student = User::factory()->create(['role' => 'student']);
+
+        $this->actingAs($student)
+            ->getJson("/api/materials/{$material->id}/download")
+            ->assertStatus(403);
+    }
+
+    /**
+     * Enrolment alone is not enough: a material attached to a level the student
+     * has not paid stays out of reach, download included.
+     */
+    public function test_enrolled_student_cannot_download_material_of_an_unpaid_level(): void
+    {
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $program = Program::factory()->create(['created_by' => $teacher->id]);
+        $class = ClassModel::factory()->create(['program_id' => $program->id]);
+        $level = ProgramLevel::create([
+            'program_id' => $program->id,
+            'level_number' => 2,
+            'name' => 'Niveau 2',
+            'price' => 100,
+            'max_installments' => 1,
+        ]);
+
+        $session = Session::factory()->create([
+            'class_id' => $class->id,
+            'teacher_id' => $teacher->id,
+            'program_level_id' => $level->id,
+        ]);
+
+        $material = SessionMaterial::factory()->create([
+            'session_id' => $session->id,
+            'uploaded_by' => $teacher->id,
+        ]);
+        Storage::disk('spaces')->put($material->file_path, 'pdf');
+
+        $student = User::factory()->create(['role' => 'student']);
+        Enrollment::create([
+            'student_id' => $student->id,
+            'class_id' => $class->id,
+            'status' => 'active',
+            'enrolled_at' => now(),
+        ]);
+
+        $this->actingAs($student)
+            ->getJson("/api/materials/{$material->id}/download")
+            ->assertStatus(403);
     }
 }

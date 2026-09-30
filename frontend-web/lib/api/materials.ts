@@ -1,10 +1,6 @@
 import apiClient from './client';
 import { SessionMaterial, PaginatedResponse } from '@/lib/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-// Remove /api suffix for storage URLs
-const STORAGE_BASE_URL = API_BASE_URL.replace(/\/api$/, '');
-
 /** 40 Mo, aligné sur SessionMaterialController::MAX_FILE_BYTES. */
 export const MAX_MATERIAL_BYTES = 40 * 1024 * 1024;
 
@@ -66,18 +62,16 @@ export const materialsApi = {
   },
 
   /**
-   * Get download URL for a material (authenticated)
+   * URL signée d'un support.
+   *
+   * Le fichier est sur Spaces : il n'existe pas sous /storage sur le domaine de
+   * l'API, et un <a href> n'enverrait pas l'en-tête Authorization. On demande
+   * donc le lien à l'API — qui vérifie l'inscription et le niveau — puis on
+   * navigue dessus. Le lien expire au bout de 5 minutes.
    */
-  getDownloadUrl: (materialId: number): string => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : '';
-    return `${STORAGE_BASE_URL}/api/materials/${materialId}/download?token=${token}`;
-  },
-
-  /**
-   * Get file URL for viewing (images, PDFs)
-   */
-  getFileUrl: (filePath: string): string => {
-    return `${STORAGE_BASE_URL}/storage/${filePath}`;
+  getDownloadUrl: async (materialId: number): Promise<string> => {
+    const response = await apiClient.get<{ url: string }>(`/materials/${materialId}/download`);
+    return response.data.url;
   },
 
   /**

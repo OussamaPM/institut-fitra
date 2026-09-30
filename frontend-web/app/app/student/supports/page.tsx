@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { SessionMaterial, Enrollment, Quiz } from '@/lib/types';
 import materialsApi from '@/lib/api/materials';
+import { openSignedUrl } from '@/lib/open-signed-url';
 import { enrollmentsApi } from '@/lib/api';
 import quizzesApi from '@/lib/api/quizzes';
 import { format } from 'date-fns';
@@ -32,10 +33,24 @@ export default function StudentSupportsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClassId, setFilterClassId] = useState<number | 'all'>('all');
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  /** Télécharge un support : le lien signé est demandé à l'API puis suivi. */
+  const handleDownload = async (materialId: number) => {
+    setDownloadingId(materialId);
+    try {
+      await openSignedUrl(() => materialsApi.getDownloadUrl(materialId));
+    } catch (error) {
+      console.error('Error downloading material:', error);
+      alert('Impossible d\'ouvrir ce support.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -310,15 +325,14 @@ export default function StudentSupportsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex justify-end">
-                        <a
-                          href={materialsApi.getFileUrl(material.file_path)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm rounded-lg hover:bg-primary/90 transition-colors"
+                        <button
+                          onClick={() => handleDownload(material.id)}
+                          disabled={downloadingId === material.id}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60"
                         >
-                          <Download size={16} />
+                          {downloadingId === material.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
                           Telecharger
-                        </a>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -367,15 +381,14 @@ export default function StudentSupportsPage() {
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                  <a
-                    href={materialsApi.getFileUrl(material.file_path)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 bg-primary text-white text-sm rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors min-h-[44px]"
+                  <button
+                    onClick={() => handleDownload(material.id)}
+                    disabled={downloadingId === material.id}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 bg-primary text-white text-sm rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors min-h-[44px] disabled:opacity-60"
                   >
-                    <Download size={16} />
+                    {downloadingId === material.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
                     Telecharger
-                  </a>
+                  </button>
                   {material.session?.replay_url && material.session.replay_valid && (
                     <button
                       onClick={() => material.session && setSelectedSession(material.session)}

@@ -235,6 +235,12 @@ POST  /api/student/tracking/{id}/submit
 - **Scope** `Session::scopeVisibleToStudent($studentId)` : inscrit à la classe **ET** (niveau de base **OU** commande payée pour ce niveau) — sous-requête corrélée sur `orders` (class_id + program_level_id), gère le multi-classes.
 - Appliqué aux **5 points d'accès élève** : `SessionController::index` + `show`, `SessionMaterialController::studentIndex` + `sessionMaterials` + `download`. Un élève niveau 1 ne voit **ni ne télécharge** les sessions/supports/replays d'un niveau non payé.
 
+### Supports de cours — téléchargement (même principe que la bibliothèque)
+- Les fichiers vivent sur **Spaces**, pas sous `/storage` du domaine API : le frontend ne construit **jamais** l'URL lui-même. Il appelle `GET /api/materials/{material}/download`, qui vérifie l'inscription **et** le niveau puis renvoie une **URL signée 5 min**.
+- Réponse **JSON `{url, title}`** sur appel XHR (un `<a href>` ne peut pas porter le jeton Sanctum) et **302** sur appel direct — `materialsApi.getDownloadUrl()` est `async`, les pages ouvrent l'onglet *avant* l'`await` via `lib/open-signed-url.ts` (sinon la popup est bloquée).
+- `ImageOptimizerService::signedUrlFor()` résout le disque : disque effectif (Spaces, ou `public` en local sans bucket), avec **repli sur le disque `public`** pour les fichiers antérieurs à la migration Spaces ; `null` → 404.
+- La route de téléchargement est déclarée **une seule fois**, sous `role:student` (qui couvre élèves, profs et admins). La redéclarer sous `role:teacher` l'écrasait — Laravel garde la dernière — et renvoyait 403 à tous les élèves.
+
 ### Bibliothèque — accès par classe ET par niveau
 - **Modèle d'accès distinct** de celui des sessions : il porte sur `library_folder_access` (classe + `level_number`), pas sur `program_level_id`. Source de vérité : `LibraryFolder::scopeVisibleToStudent`.
 - Un dossier est visible si **publié** ET (`is_public` OU ligne d'accès sur une classe où l'élève est **inscrit `active`** avec : `level_number = 1` → aucune commande exigée, le niveau 1 est **inclusif** ; `level_number >= 2` → commande `paid`/`partial` pour ce niveau **dans cette classe**).

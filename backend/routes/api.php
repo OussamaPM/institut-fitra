@@ -186,7 +186,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/materials', [SessionMaterialController::class, 'index']);
         Route::post('/sessions/{session}/materials', [SessionMaterialController::class, 'store']);
         Route::delete('/materials/{material}', [SessionMaterialController::class, 'destroy']);
-        Route::get('/materials/{material}/download', [SessionMaterialController::class, 'download']);
+        // Pas de route de téléchargement ici : elle est déclarée plus haut sous
+        // role:student, qui couvre déjà élèves, professeurs et admins. La
+        // redéclarer sous role:teacher l'écraserait — Laravel garde la dernière —
+        // et interdirait le téléchargement aux élèves.
     });
 
     // Admin only routes - Enrollments & Users management
