@@ -476,7 +476,14 @@ cd document-editor && npm run dev              # Port 3021
   - Page admin élèves de la classe : carte info en grille 3 colonnes (programme / niveau actuel / horaires de la classe), pills de **sélecteur de niveau** (niveau 1 = tous les inscrits, niveau 2+ = réinscrits uniquement avec stats payé/en cours)
   - **Montée de niveau via l'ajout manuel** : sélecteur de niveau + liste déroulante des élèves inscrits, activation gratuite ou en espèces ; badge niveau sur la ligne de commande ; ligne "Gratuit" dans le suivi de paiement élève ; bloc de réinscription qui disparaît automatiquement
   - **Accès élève cloisonné par niveau** : sessions, supports et replays d'un niveau supérieur invisibles/non téléchargeables tant que l'élève n'a pas payé ce niveau (`Session::scopeVisibleToStudent`, `ProgramLevelService::accessibleLevelIds`) — couvert par 3 tests dédiés
-- **Stripe live** (✅ configuré en prod) : clés + webhook actifs ; favicon validé sur Google Search Console
+- **Stripe live** (✅ configuré en prod) : clés + webhook actifs
+
+### Favicon dans les résultats Google
+- **Contrainte Google** : un favicon n'est affiché dans les résultats que s'il est **carré et d'un côté multiple de 48 px** (48, 96, 144, 192…). Une icône 16 ou 32 px est ignorée et Google retombe sur le globe générique — c'était le cas jusqu'au 30/09/2026 (toutes les icônes déclarées faisaient 16 ou 32 px).
+- `public/favicon.ico` embarque donc les frames **16 + 32 + 48**, et `/android-chrome-192x192.png` (192 = 48×4) est déclaré en `rel="icon"`.
+- **Ne jamais changer l'URL d'un favicon** : Google doit alors tout réapprendre. On modifie le contenu du fichier, pas son adresse.
+- `rel="android-chrome-192x192"` n'est **pas** une valeur de `rel` valide : ces balises (supprimées) n'étaient lues ni par les navigateurs ni par Google. Android lit le manifeste.
+- Google recrawle les favicons à son propre rythme (souvent plusieurs semaines) ; on peut seulement accélérer en demandant l'indexation de la page d'accueil dans la Search Console.
 
 - **Bibliothèque** (14/09/2026) :
   - Admin `/admin/library` : 2 catégories (Vidéos & Audios / Ressources), dossiers CRUD, ciblage d'accès par classe **et par niveau** (ou « Tout »), brouillon/publié, contenus réordonnables par flèches, pagination 10/page

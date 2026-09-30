@@ -29,20 +29,24 @@ export const metadata: Metadata = {
   description:
     "L'Institut FITRA est un institut d'apprentissage en ligne spécialisé dans l'enseignement des sciences islamiques, pensé pour rendre le savoir accessible à chacun.",
   manifest: "/site.webmanifest",
+  // Google n'affiche un favicon dans ses résultats que si le site en déclare un
+  // carré d'au moins 48 px, et dont le côté est un multiple de 48. Les icônes de
+  // 16 et 32 px sont ignorées, d'où le globe générique affiché jusqu'ici.
+  //
+  // Les URL sont laissées telles quelles : changer l'adresse d'un favicon oblige
+  // Google à tout réapprendre. Seuls le contenu du .ico (qui embarque désormais
+  // une frame 48×48) et les balises changent.
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
-      { url: '/favicon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.ico', sizes: '16x16 32x32 48x48' },
+      { url: '/android-chrome-192x192.png', sizes: '192x192', type: 'image/png' },
     ],
     apple: [
       { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
     ],
-    other: [
-      { rel: 'android-chrome-192x192', url: '/android-chrome-192x192.png' },
-      { rel: 'android-chrome-512x512', url: '/android-chrome-512x512.png' },
-    ],
+    // Les anciennes entrées `other` déclaraient rel="android-chrome-192x192",
+    // qui n'est pas une valeur de rel valide : ni les navigateurs ni Google n'y
+    // voyaient une icône. Android lit le manifeste, c'est suffisant.
   },
   openGraph: {
     title: "Institut Fitra",
