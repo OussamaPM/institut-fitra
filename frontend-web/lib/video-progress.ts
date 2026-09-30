@@ -19,7 +19,7 @@ export type VideoProvider = 'playerjs' | 'vimeo' | 'unknown';
 const STORAGE_KEY = 'fitra.video-progress.v1';
 
 /** En deçà, reprendre n'apporte rien et surprend plus que ça n'aide. */
-const MIN_RESUME_SECONDS = 20;
+const MIN_RESUME_SECONDS = 10;
 
 /** Vidéo vue jusque-là = terminée : on efface pour repartir du début. */
 const END_RATIO = 0.97;
@@ -41,6 +41,8 @@ export interface PlayerEvent {
   name: string;
   seconds?: number;
   duration?: number;
+  /** Valeur nue d'une réponse à un getter — son sens dépend de `name`. */
+  value?: number;
 }
 
 /**
@@ -120,9 +122,15 @@ export function saveProgress(src: string, seconds: number, duration?: number): v
     return;
   }
 
-  if (seconds < MIN_RESUME_SECONDS || isNearEnd(seconds, duration)) {
+  if (isNearEnd(seconds, duration)) {
     clearProgress(src);
 
+    return;
+  }
+
+  // Sous le seuil on ne fait rien, plutôt que d'effacer : un sondage de position
+  // reçu avant le démarrage vaut 0 et détruirait la reprise mémorisée.
+  if (seconds < MIN_RESUME_SECONDS) {
     return;
   }
 
@@ -191,18 +199,26 @@ export function preparePlayerSrc(src: string, seconds: number): string {
   }
 }
 
+const PLAYERJS_VERSION = '0.0.11';
+
+/** Enveloppe player.js. Le `context` est obligatoire, le lecteur ignore le reste. */
+function playerjsMessage(fields: Record<string, unknown>): string {
+  return JSON.stringify({ context: 'player.js', version: PLAYERJS_VERSION, ...fields });
+}
+
 /**
  * Messages d'abonnement à envoyer à l'iframe, déjà sérialisés.
  *
- * Bunny suit la spec player.js (enveloppe `context`/`version`), Vimeo a son
- * propre dialecte — plus court, mais de même forme.
+ * Le champ `listener` n'est pas décoratif : la bibliothèque player.js officielle
+ * en envoie toujours un, et le lecteur s'en sert pour réadresser l'événement à
+ * l'abonné. Sans lui, Bunny accepte l'abonnement sans jamais rien renvoyer.
  */
 export function subscriptionMessages(provider: VideoProvider): string[] {
   const events = ['timeupdate', 'pause', 'ended'];
 
   if (provider === 'playerjs') {
     return events.map((value) =>
-      JSON.stringify({ context: 'player.js', version: '0.0.11', method: 'addEventListener', value }),
+      playerjsMessage({ method: 'addEventListener', value, listener: `fitra-${value}` }),
     );
   }
 
@@ -214,10 +230,57 @@ export function subscriptionMessages(provider: VideoProvider): string[] {
 }
 
 /**
+ * Ordre de déplacement de la tête de lecture.
+ *
+ * Doublon volontaire du `?t=` de l'URL : si le lecteur ignore le paramètre, le
+ * seek envoyé à l'ouverture rattrape le coup.
+ */
+export function seekMessage(provider: VideoProvider, seconds: number): string | null {
+  const value = Math.floor(seconds);
+
+  if (value <= 0) {
+    return null;
+  }
+
+  if (provider === 'playerjs') {
+    return playerjsMessage({ method: 'setCurrentTime', value });
+  }
+
+  if (provider === 'vimeo') {
+    return JSON.stringify({ method: 'setCurrentTime', value });
+  }
+
+  return null;
+}
+
+/**
+ * Interrogation directe de la position et de la durée.
+ *
+ * Filet de sécurité : si l'abonnement à `timeupdate` n'aboutit pas, demander la
+ * position reste un chemin indépendant pour la connaître.
+ */
+export function pollMessages(provider: VideoProvider): string[] {
+  if (provider === 'playerjs') {
+    return ['getCurrentTime', 'getDuration'].map((method) =>
+      playerjsMessage({ method, listener: `fitra-${method}` }),
+    );
+  }
+
+  if (provider === 'vimeo') {
+    return ['getCurrentTime', 'getDuration'].map((method) => JSON.stringify({ method }));
+  }
+
+  return [];
+}
+
+/**
  * Normalise un message reçu de l'iframe. null = message hors sujet, à ignorer.
  *
- * Les deux lecteurs envoient une chaîne JSON portant `event` ; seul diffère le
- * nom du champ qui transporte la charge utile (`value` / `data`).
+ * Trois formes cohabitent :
+ *  - événement player.js : `{event:'timeupdate', value:{seconds, duration}}`
+ *  - événement Vimeo     : `{event:'timeupdate', data:{seconds, duration}}`
+ *  - réponse à un getter : la valeur est un **nombre nu**, et Vimeo la renvoie
+ *    sous `method` au lieu de `event`.
  */
 export function parsePlayerMessage(raw: unknown, provider: VideoProvider): PlayerEvent | null {
   if (provider === 'unknown') {
@@ -238,7 +301,7 @@ export function parsePlayerMessage(raw: unknown, provider: VideoProvider): Playe
     return null;
   }
 
-  if (!data || typeof data.event !== 'string') {
+  if (!data) {
     return null;
   }
 
@@ -248,12 +311,25 @@ export function parsePlayerMessage(raw: unknown, provider: VideoProvider): Playe
     return null;
   }
 
-  const payload = (provider === 'playerjs' ? data.value : data.data) as Record<string, unknown> | undefined;
+  const name =
+    typeof data.event === 'string' ? data.event : typeof data.method === 'string' ? data.method : null;
+
+  if (name === null) {
+    return null;
+  }
+
+  const payload = provider === 'playerjs' ? data.value : (data.data ?? data.value);
+
+  if (typeof payload === 'number') {
+    return { name, value: finiteNumber(payload) };
+  }
+
+  const fields = payload as Record<string, unknown> | undefined;
 
   return {
-    name: data.event,
-    seconds: finiteNumber(payload?.seconds),
-    duration: finiteNumber(payload?.duration),
+    name,
+    seconds: finiteNumber(fields?.seconds),
+    duration: finiteNumber(fields?.duration),
   };
 }
 

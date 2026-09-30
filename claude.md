@@ -261,10 +261,15 @@ POST  /api/student/tracking/{id}/submit
 - Tous les lecteurs élève passent par **`<VideoPlayer>`** : 3 modales replay (`/student/replays`, `/student/supports`, `/student/planning`) et la bibliothèque (vidéo **et** audio).
 - La position est mémorisée dans le **localStorage de notre origine**, clé `fitra.video-progress.v1`. Volontairement **pas** le `rememberPosition` natif de Bunny : il écrit dans le stockage de l'iframe, que **Safari bloque** pour un contenu tiers. Le paramètre `rememberPosition=false` est donc **forcé** sur les URL Bunny, sinon deux mémoires se disputeraient la vidéo et « Repartir du début » renverrait au milieu.
 - **Conséquence assumée** : la reprise est par navigateur/appareil, elle ne suit pas l'élève d'un poste à l'autre.
-- **Capture** : postMessage. Bunny parle **player.js** (`{context:'player.js', event:'timeupdate', value:{seconds, duration}}`), Vimeo son propre dialecte (`{event, data:{seconds, duration}}`). Abonnement envoyé sur `ready` **et** sur le `load` de l'iframe. Écriture à la pause, toutes les 5 s en lecture, et au départ (démontage + `pagehide`).
-- **Reprise** : paramètre d'URL (`?t=125` Bunny, `#t=125s` Vimeo), appliqué par le lecteur avant la première image — pas de `setCurrentTime` en postMessage, qui courrait après l'état « prêt ».
+- **Deux chemins redondants de chaque côté**, un lecteur tiers n'honorant pas toujours ce que sa doc annonce :
+  - **Capture** : abonnement à `timeupdate` **et** interrogation directe (`getCurrentTime`/`getDuration`) toutes les 5 s. Écriture à la pause, périodiquement, et au départ (démontage + `pagehide`).
+  - **Reprise** : paramètre d'URL (`?t=125` Bunny, `#t=125s` Vimeo) **et** `setCurrentTime` envoyé une seule fois dès `ready`.
+- **Le champ `listener` des messages `addEventListener` n'est pas optionnel en pratique** : la bibliothèque player.js officielle en envoie toujours un et le lecteur s'en sert pour réadresser l'événement. Sans lui, Bunny accepte l'abonnement et ne renvoie **jamais** de `timeupdate` — c'était la cause du premier échec.
+- Formats de message : événement player.js `{context:'player.js', event:'timeupdate', value:{seconds, duration}}` ; événement Vimeo `{event, data:{…}}` ; **réponse à un getter = valeur nue**, sous `event` (player.js) ou sous `method` (Vimeo).
+- Une position **sous le seuil n'efface jamais** la valeur mémorisée : un sondage reçu avant le démarrage vaut 0 et la détruirait.
+- **Diagnostic** : `localStorage.setItem('fitra.video-debug', '1')` journalise tous les messages échangés avec le lecteur dans la console.
 - **Clé de stockage** = hôte + chemin, **sans la query** : une URL Bunny signée porte `token`/`expires` qui changent à chaque chargement, les garder rendrait toute reprise impossible.
-- Règles : rien en dessous de **20 s**, effacement quand la vidéo est finie (≥ 97 % ou moins de 20 s de la fin), purge à 180 jours et 200 entrées. Lecteur ni Bunny ni Vimeo → mécanique désactivée, iframe inchangée.
+- Règles : rien en dessous de **10 s**, effacement quand la vidéo est finie (≥ 97 % ou moins de 20 s de la fin), purge à 180 jours et 200 entrées. Lecteur ni Bunny ni Vimeo → mécanique désactivée, iframe inchangée.
 - Pastille « Reprise à 12:05 · Repartir du début » pendant 8 s (masquée sur l'audio, qu'elle recouvrirait).
 - **Non testable en local** : Bunny refuse les embeds depuis `app.localhost` (referrer). Vérification en préproduction/production.
 

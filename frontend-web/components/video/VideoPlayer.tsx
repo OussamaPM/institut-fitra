@@ -7,10 +7,12 @@ import {
   detectProvider,
   formatTimecode,
   parsePlayerMessage,
+  pollMessages,
+  preparePlayerSrc,
   readProgress,
   saveProgress,
+  seekMessage,
   subscriptionMessages,
-  preparePlayerSrc,
 } from '@/lib/video-progress';
 
 interface VideoPlayerProps {
@@ -27,22 +29,35 @@ interface VideoPlayerProps {
   showResumeNotice?: boolean;
 }
 
-/** Fréquence d'écriture pendant la lecture : assez fin pour ne presque rien perdre. */
-const SAVE_INTERVAL_MS = 5000;
+/** Fréquence d'écriture pendant la lecture, et de sondage du lecteur. */
+const TICK_MS = 5000;
 
 /** Durée d'affichage de l'indicateur « Reprise à … ». */
 const NOTICE_MS = 8000;
 
+/** Interrupteur de diagnostic : localStorage.setItem('fitra.video-debug', '1'). */
+function debug(...args: unknown[]): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage.getItem('fitra.video-debug') === '1') {
+      console.log('[VideoPlayer]', ...args);
+    }
+  } catch {
+    // Stockage indisponible : pas de journal, rien de plus.
+  }
+}
+
 /**
  * Lecteur vidéo/audio embarqué qui reprend là où l'élève s'était arrêté.
  *
- * La position est relue au montage et injectée dans l'URL du lecteur ; elle est
- * réenregistrée à la pause, périodiquement pendant la lecture, et au départ de
- * l'élève (fermeture de la modale ou de l'onglet).
+ * Deux chemins redondants de chaque côté, parce qu'un lecteur tiers n'honore pas
+ * toujours ce que sa documentation annonce :
+ *  - pour CONNAÎTRE la position : abonnement à `timeupdate`, **et** interrogation
+ *    directe du lecteur toutes les 5 s ;
+ *  - pour la RESTAURER : paramètre `?t=` dans l'URL, **et** ordre `setCurrentTime`
+ *    dès que le lecteur se déclare prêt.
  *
- * Tout repose sur le dialogue postMessage avec l'iframe : si le lecteur n'est ni
- * Bunny ni Vimeo, la mécanique se désactive d'elle-même et la vidéo se comporte
- * exactement comme avant.
+ * Si le lecteur n'est ni Bunny ni Vimeo, toute la mécanique se désactive et la
+ * vidéo se comporte exactement comme une iframe nue.
  */
 export default function VideoPlayer({
   src,
@@ -60,34 +75,57 @@ export default function VideoPlayer({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   /** Dernière position rapportée par le lecteur, écrite au départ de l'élève. */
   const latest = useRef<{ seconds: number; duration?: number } | null>(null);
+  const duration = useRef<number | undefined>(undefined);
   const lastSavedAt = useRef(0);
+  /** Le seek de reprise n'est envoyé qu'une fois, sinon il annulerait les avances manuelles. */
+  const seekSent = useRef(false);
 
   const playerSrc = useMemo(() => preparePlayerSrc(src, resumeFrom), [src, resumeFrom]);
   const playerOrigin = useMemo(() => originOf(playerSrc), [playerSrc]);
+
+  const post = useCallback(
+    (messages: (string | null)[]) => {
+      const target = iframeRef.current?.contentWindow;
+
+      if (!target || playerOrigin === null) {
+        return;
+      }
+
+      messages.forEach((message) => {
+        if (message !== null) {
+          debug('→', message);
+          target.postMessage(message, playerOrigin);
+        }
+      });
+    },
+    [playerOrigin],
+  );
 
   const flush = useCallback(() => {
     const state = latest.current;
 
     if (state) {
+      debug('enregistrement', state);
       saveProgress(src, state.seconds, state.duration);
     }
   }, [src]);
 
-  /** Abonne le parent aux événements du lecteur. Idempotent : appelé plusieurs fois. */
-  const subscribe = useCallback(() => {
-    const target = iframeRef.current?.contentWindow;
+  /** Abonnement + reprise. Idempotent : appelé sur `ready` et sur le load de l'iframe. */
+  const handshake = useCallback(() => {
+    post(subscriptionMessages(provider));
 
-    if (!target || playerOrigin === null) {
-      return;
+    if (!seekSent.current && resumeFrom > 0) {
+      seekSent.current = true;
+      post([seekMessage(provider, resumeFrom)]);
     }
-
-    subscriptionMessages(provider).forEach((message) => target.postMessage(message, playerOrigin));
-  }, [provider, playerOrigin]);
+  }, [post, provider, resumeFrom]);
 
   useEffect(() => {
     if (provider === 'unknown' || playerOrigin === null) {
       return;
     }
+
+    debug('montage', { provider, playerSrc, resumeFrom });
 
     const onMessage = (event: MessageEvent) => {
       // Double filtre : la bonne origine ET notre iframe — une page peut en
@@ -106,14 +144,29 @@ export default function VideoPlayer({
         return;
       }
 
+      debug('←', parsed);
+
       if (parsed.name === 'ready') {
-        subscribe();
+        handshake();
 
         return;
       }
 
-      if (parsed.seconds !== undefined) {
-        latest.current = { seconds: parsed.seconds, duration: parsed.duration };
+      if (parsed.name === 'getDuration') {
+        duration.current = parsed.value ?? parsed.duration;
+
+        return;
+      }
+
+      if (parsed.duration !== undefined) {
+        duration.current = parsed.duration;
+      }
+
+      // `value` porte la réponse à getCurrentTime, `seconds` celle des événements.
+      const seconds = parsed.seconds ?? parsed.value;
+
+      if (seconds !== undefined) {
+        latest.current = { seconds, duration: duration.current };
       }
 
       if (parsed.name === 'ended') {
@@ -131,7 +184,7 @@ export default function VideoPlayer({
         return;
       }
 
-      if (parsed.name === 'timeupdate' && Date.now() - lastSavedAt.current >= SAVE_INTERVAL_MS) {
+      if (Date.now() - lastSavedAt.current >= TICK_MS) {
         lastSavedAt.current = Date.now();
         flush();
       }
@@ -141,13 +194,21 @@ export default function VideoPlayer({
     // Fermer l'onglet ne démonte pas le composant de façon fiable ; pagehide, si.
     window.addEventListener('pagehide', flush);
 
+    // Le sondage couvre le cas où l'abonnement n'aboutit pas, et relance la
+    // poignée de main si l'événement `ready` nous a échappé.
+    const ticker = window.setInterval(() => {
+      handshake();
+      post(pollMessages(provider));
+    }, TICK_MS);
+
     return () => {
+      window.clearInterval(ticker);
       window.removeEventListener('message', onMessage);
       window.removeEventListener('pagehide', flush);
       // Fermeture de la modale : dernière chance d'enregistrer.
       flush();
     };
-  }, [provider, playerOrigin, src, flush, subscribe]);
+  }, [provider, playerOrigin, playerSrc, resumeFrom, src, flush, handshake, post]);
 
   useEffect(() => {
     if (!noticeVisible) {
@@ -163,6 +224,7 @@ export default function VideoPlayer({
   const restart = () => {
     latest.current = null;
     lastSavedAt.current = 0;
+    seekSent.current = true;
     clearProgress(src);
     setResumeFrom(0);
     setNoticeVisible(false);
@@ -179,7 +241,7 @@ export default function VideoPlayer({
         sandbox={sandbox}
         allow={allow}
         allowFullScreen
-        onLoad={subscribe}
+        onLoad={handshake}
       />
 
       {showResumeNotice && noticeVisible && resumeFrom > 0 && (
