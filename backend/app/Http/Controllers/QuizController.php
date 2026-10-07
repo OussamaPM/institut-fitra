@@ -105,7 +105,9 @@ class QuizController extends Controller
                         'type' => 'quiz',
                         'title' => 'Nouveau quiz disponible',
                         'message' => "Un quiz a été ajouté pour la session \"{$session->title}\" : \"{$quiz->title}\".",
-                        'action_url' => '/student/supports',
+                        // Directement le quiz : la page Supports ne le montrait que sur la
+                        // ligne d'un support de la même séance, invisible pour une séance sans support.
+                        'action_url' => "/student/quiz/{$quiz->id}",
                     ]);
                 }
             }

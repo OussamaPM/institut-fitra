@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   CheckCircle,
 } from 'lucide-react';
+import Link from 'next/link';
 
 export default function StudentQuizPage() {
   const params = useParams();
@@ -25,6 +26,7 @@ export default function StudentQuizPage() {
   const [answers, setAnswers] = useState<Record<number, { selected_option_id?: number; free_text_answer?: string }>>({});
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     loadQuiz();
@@ -39,8 +41,11 @@ export default function StudentQuizPage() {
         return;
       }
       setQuiz(data.quiz);
-    } catch {
-      router.replace('/app/student/supports');
+    } catch (error) {
+      // Ne pas renvoyer silencieusement vers Supports : l'élève croirait que le
+      // lien du quiz mène au support. On explique et on laisse le choix.
+      console.error('Error loading quiz:', error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -89,9 +94,21 @@ export default function StudentQuizPage() {
     );
   }
 
-  if (!quiz || totalQuestions === 0) {
+  if (loadError || !quiz || totalQuestions === 0) {
     return (
-      <div className="p-8 text-center text-gray-500">Quiz introuvable.</div>
+      <div className="min-h-screen bg-background p-4 md:p-8">
+        <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
+          <HelpCircle size={32} className="mx-auto text-gray-300 mb-3" />
+          <p className="text-gray-600 mb-1">Ce quiz n&apos;est pas disponible pour le moment.</p>
+          <p className="text-sm text-gray-400 mb-5">Réessayez plus tard ou contactez l&apos;institut via la messagerie.</p>
+          <Link
+            href="/app/student/supports"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            Retour aux supports
+          </Link>
+        </div>
+      </div>
     );
   }
 

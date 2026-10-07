@@ -14,7 +14,9 @@ return new class extends Migration
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->enum('type', ['session', 'message', 'enrollment', 'material', 'payment', 'level', 'tracking', 'other']);
+            // 'tracking' et 'quiz' ont été ajoutés en MySQL par des migrations ALTER dédiées ; ils doivent aussi
+            // figurer ici pour les tests SQLite, où l'enum est une contrainte CHECK figée à la création.
+            $table->enum('type', ['session', 'message', 'enrollment', 'material', 'payment', 'level', 'tracking', 'quiz', 'other']);
             $table->string('title');
             $table->text('message');
             $table->timestamp('read_at')->nullable();

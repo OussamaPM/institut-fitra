@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { Quiz, QuizSubmission, QuizScore } from '@/lib/types';
 import quizzesApi from '@/lib/api/quizzes';
 import { format } from 'date-fns';
@@ -21,13 +21,13 @@ import Link from 'next/link';
 
 export default function QuizReviewPage() {
   const params = useParams();
-  const router = useRouter();
   const quizId = Number(params.id);
 
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [submission, setSubmission] = useState<QuizSubmission | null>(null);
   const [score, setScore] = useState<QuizScore | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     loadReview();
@@ -40,8 +40,9 @@ export default function QuizReviewPage() {
       setQuiz(data.quiz);
       setSubmission(data.submission);
       setScore(data.score);
-    } catch {
-      router.replace('/app/student/supports');
+    } catch (error) {
+      console.error('Error loading quiz review:', error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -55,8 +56,21 @@ export default function QuizReviewPage() {
     );
   }
 
-  if (!quiz || !submission || !score) {
-    return <div className="p-8 text-center text-gray-500">Résultats introuvables.</div>;
+  if (loadError || !quiz || !submission || !score) {
+    return (
+      <div className="min-h-screen bg-background p-4 md:p-8">
+        <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
+          <HelpCircle size={32} className="mx-auto text-gray-300 mb-3" />
+          <p className="text-gray-600 mb-5">Les résultats de ce quiz ne sont pas disponibles pour le moment.</p>
+          <Link
+            href="/app/student/supports"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            Retour aux supports
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   const getAnswerForQuestion = (questionId: number) =>

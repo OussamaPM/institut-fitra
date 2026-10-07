@@ -7,8 +7,6 @@ import VideoPlayer from '@/components/video/VideoPlayer';
 import { openSignedUrl } from '@/lib/open-signed-url';
 import { enrollmentsApi } from '@/lib/api';
 import quizzesApi from '@/lib/api/quizzes';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { formatParis } from '@/lib/datetime';
 import {
   FileText,
@@ -30,6 +28,7 @@ export default function StudentSupportsPage() {
   const [materials, setMaterials] = useState<SessionMaterial[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [quizzesBySession, setQuizzesBySession] = useState<Record<number, Quiz>>({});
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClassId, setFilterClassId] = useState<number | 'all'>('all');
@@ -67,6 +66,7 @@ export default function StudentSupportsPage() {
       const bySession: Record<number, Quiz> = {};
       quizzesData.forEach((q) => { bySession[q.session_id] = q; });
       setQuizzesBySession(bySession);
+      setQuizzes(quizzesData);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -104,6 +104,25 @@ export default function StudentSupportsPage() {
     const dateB = b.session?.scheduled_at ? new Date(b.session.scheduled_at).getTime() : 0;
     return dateB - dateA;
   });
+
+  // Tous les quiz de l'élève, y compris ceux d'une séance sans support : le bouton
+  // par ligne de support ne suffit pas, un tel quiz n'y apparaîtrait jamais.
+  const visibleQuizzes = quizzes
+    .filter((quiz) => {
+      const matchesSearch =
+        searchTerm === '' ||
+        quiz.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        quiz.session?.title?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesClass = filterClassId === 'all' || quiz.class_id === filterClassId;
+      return matchesSearch && matchesClass;
+    })
+    .sort((a, b) => {
+      if (!!a.submitted !== !!b.submitted) return a.submitted ? 1 : -1;
+      const dateA = a.session?.scheduled_at ? new Date(a.session.scheduled_at).getTime() : 0;
+      const dateB = b.session?.scheduled_at ? new Date(b.session.scheduled_at).getTime() : 0;
+      return dateB - dateA;
+    });
+  const pendingQuizCount = quizzes.filter((quiz) => !quiz.submitted).length;
 
   if (loading) {
     return (
@@ -198,6 +217,52 @@ export default function StudentSupportsPage() {
           </div>
         </div>
       </div>
+
+      {/* Quiz */}
+      {visibleQuizzes.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-4 md:mb-6">
+          <div className="px-4 md:px-6 py-3 md:py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+            <h2 className="font-semibold text-secondary flex items-center gap-2">
+              <HelpCircle size={18} className="text-orange-500" />
+              Quiz
+            </h2>
+            {pendingQuizCount > 0 && (
+              <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                {pendingQuizCount} à faire
+              </span>
+            )}
+          </div>
+          <ul className="divide-y divide-gray-100">
+            {visibleQuizzes.map((quiz) => (
+              <li key={quiz.id}>
+                <Link
+                  href={quiz.submitted ? `/app/student/quiz/${quiz.id}/review` : `/app/student/quiz/${quiz.id}`}
+                  className="flex items-center gap-3 md:gap-4 px-4 md:px-6 py-3 hover:bg-gray-50 transition-colors min-h-[44px]"
+                >
+                  <div className={`p-2 rounded-lg flex-shrink-0 ${quiz.submitted ? 'bg-green-100' : 'bg-orange-100'}`}>
+                    <HelpCircle size={18} className={quiz.submitted ? 'text-green-600' : 'text-orange-600'} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 text-sm md:text-base truncate">{quiz.title}</p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {quiz.session?.title || 'Séance'}
+                      {quiz.session?.scheduled_at && ` · ${formatParis(quiz.session.scheduled_at, 'dd/MM/yyyy')}`}
+                      {quiz.class?.program?.name && ` · ${quiz.class.program.name}`}
+                    </p>
+                  </div>
+                  <span
+                    className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-medium ${
+                      quiz.submitted ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                    }`}
+                  >
+                    {quiz.submitted ? 'Complété' : 'À faire'}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Materials List */}
       {sortedMaterials.length === 0 ? (
