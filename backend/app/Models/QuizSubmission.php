@@ -39,12 +39,20 @@ class QuizSubmission extends Model
     }
 
     /**
-     * Score : nombre de bonnes/mauvaises réponses sur les QCM uniquement
+     * Score sur les QCM uniquement. Le total est le nombre de QCM du quiz :
+     * un QCM non répondu (is_correct null) compte comme une erreur, et les
+     * réponses libres ne sont jamais notées. Les relations déjà chargées
+     * (answers, quiz.questions) sont réutilisées pour éviter des requêtes N+1.
      */
     public function getScoreAttribute(): array
     {
-        $total = $this->answers()->whereNotNull('is_correct')->count();
-        $correct = $this->answers()->where('is_correct', true)->count();
+        $answers = $this->relationLoaded('answers') ? $this->answers : $this->answers()->get();
+        $correct = $answers->where('is_correct', true)->count();
+
+        $quiz = $this->relationLoaded('quiz') ? $this->quiz : null;
+        $total = $quiz !== null && $quiz->relationLoaded('questions')
+            ? $quiz->questions->where('type', 'multiple_choice')->count()
+            : QuizQuestion::where('quiz_id', $this->quiz_id)->where('type', 'multiple_choice')->count();
 
         return [
             'correct' => $correct,

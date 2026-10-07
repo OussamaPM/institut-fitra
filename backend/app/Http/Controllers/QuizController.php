@@ -7,7 +7,6 @@ namespace App\Http\Controllers;
 use App\Models\ClassModel;
 use App\Models\Notification;
 use App\Models\Quiz;
-use App\Models\QuizAnswer;
 use App\Models\QuizOption;
 use App\Models\QuizQuestion;
 use App\Models\QuizSubmission;
@@ -220,17 +219,17 @@ class QuizController extends Controller
     {
         $quiz->load(['questions.options', 'session', 'class.program']);
 
-        $submissions = QuizSubmission::with([
-            'student.studentProfile',
-            'answers.selectedOption',
-            'answers.question',
-        ])
+        // Les questions et options viennent du quiz (racine de la réponse) :
+        // inutile de les dupliquer dans chaque réponse de chaque soumission.
+        $submissions = QuizSubmission::with(['student.studentProfile', 'answers'])
             ->where('quiz_id', $quiz->id)
             ->orderBy('submitted_at', 'desc')
             ->get();
 
-        $submissions->each(function (QuizSubmission $submission): void {
-            $submission->append('score');
+        $submissions->each(function (QuizSubmission $submission) use ($quiz): void {
+            // Le quiz (questions déjà chargées) sert au calcul du score sans requête
+            // supplémentaire ; il reste masqué, le client l'a déjà à la racine.
+            $submission->setRelation('quiz', $quiz)->makeHidden('quiz')->append('score');
         });
 
         return response()->json([

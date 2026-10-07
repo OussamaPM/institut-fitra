@@ -34,6 +34,7 @@ import {
   Users,
 } from 'lucide-react';
 import sessionsApi from '@/lib/api/sessions';
+import Link from 'next/link';
 
 interface QuizOptionDraft {
   option_text: string;
@@ -929,10 +930,10 @@ export default function SessionDetailModal({
                     Modifier
                   </button>
                   {(quiz.submissions_count ?? 0) > 0 && (
-                    <a href={`/app/admin/quizzes/${quiz.id}/results`} className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                    <Link href={`/admin/quizzes/${quiz.id}/results`} className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
                       <Users size={12} />
                       Voir résultats
-                    </a>
+                    </Link>
                   )}
                   <button onClick={handleDeleteQuiz} className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1">
                     <Trash2 size={12} />

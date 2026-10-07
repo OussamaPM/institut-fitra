@@ -90,7 +90,7 @@ Program (template)
 | `messages` | sender_id, receiver_id, group_id, content, attachment_path, attachment_type, attachment_original_name, attachment_size, read_at, sent_at |
 | `message_groups` | name, type (program/class/custom), program_id, class_id, created_by |
 | `group_members` | group_id, user_id, joined_at |
-| `notifications` | user_id, type (session/message/enrollment/material/payment/level/tracking/other), title, message, action_url, read_at |
+| `notifications` | user_id, type (session/message/enrollment/material/payment/level/tracking/quiz/other), title, message, action_url, read_at |
 | `orders` | student_id, program_id, class_id, customer_email, total_amount, installments_count, payment_method, status, stripe_checkout_session_id, level_number, program_level_id |
 | `order_payments` | order_id, amount, installment_number, status, scheduled_at, paid_at, stripe_payment_intent_id, recovery_for_payment_id, is_recovery_payment |
 | `program_levels` | program_id, level_number (≥2), name, description, price, max_installments, schedule (JSON), teacher_id |
@@ -100,6 +100,11 @@ Program (template)
 | `library_items` | library_folder_id, title, type (video/audio/document), embed_url, file_path, original_name, file_size, **position** |
 | `settings` | key, value (dont stripe_secret_key, stripe_webhook_secret) |
 | `dashboard_alert_dismissals` | user_id, alert_type, **mode** (hidden/deleted), dismissed_at — unique(user_id, alert_type) |
+| `quizzes` | session_id, class_id, title, description, created_by — unique(session_id, class_id) |
+| `quiz_questions` | quiz_id, question_text, type (multiple_choice/free_text), answer_explanation, order |
+| `quiz_options` | question_id, option_text, is_correct, order |
+| `quiz_submissions` | quiz_id, student_id, submitted_at — unique(quiz_id, student_id) |
+| `quiz_answers` | submission_id, question_id, selected_option_id, free_text_answer, **is_correct nullable** (null = réponse libre **ou QCM non répondu**) |
 
 **Format schedule** : `[{"day": "lundi", "start_time": "10:00", "end_time": "12:00"}]` — porté par `classes.schedule` (niveau 1) et `program_levels.schedule` / `program_level_activations.schedule` (niveaux 2+). Le programme **n'a plus** d'emploi du temps.
 
@@ -215,6 +220,18 @@ GET   /api/student/tracking | /tracking/pending-count | /tracking/history | /tra
 POST  /api/student/tracking/{id}/submit
 ```
 
+### Quiz
+```
+GET    /api/admin/quizzes?session_id=X&class_id=Y # les deux requis — le quiz de la session (ou null) ; tout le bloc est sous role:admin
+POST   /api/admin/quizzes
+PUT    /api/admin/quizzes/{quiz}                   # questions modifiables seulement sans soumission
+DELETE /api/admin/quizzes/{quiz}
+GET    /api/admin/quizzes/{quiz}/results           # quiz (questions.options, session, class.program) + submissions (student.student_profile, answers, score)
+
+GET    /api/student/quizzes | /quizzes/{quiz} | /quizzes/{quiz}/review
+POST   /api/student/quizzes/{quiz}/submit
+```
+
 ---
 
 ## 6. Comportements Importants
@@ -327,6 +344,12 @@ POST  /api/student/tracking/{id}/submit
 - `TrackingFormController::assign()` crée une `Notification` (type `tracking`) pour chaque élève assigné
 - `GET /student/tracking/pending-count` → nombre de formulaires non complétés (badge rouge sidebar)
 - **Brouillon / mise en pause** : `POST /student/tracking/{form}/save-draft` enregistre les réponses partielles (`updateOrCreate`) + pose `draft_saved_at` sur l'assignation, **sans** valider les questions obligatoires ni marquer `completed_at`. À la reprise, le `show` renvoie les réponses sauvegardées (pré-remplissage). UI élève : bouton "Mettre en pause", badge "Brouillon enregistré" + bouton "Reprendre". Le formulaire reste comptabilisé comme à compléter (`pending-count` se base sur `completed_at`).
+
+### Quiz (un par session et par classe)
+- Géré depuis la modale de session admin (`admin/sessions/SessionDetailModal.tsx`) : création, modification, suppression, lien « Voir résultats ».
+- **Résultats admin** : page `/admin/quizzes/[id]/results` (score moyen, réussite par question, liste des soumissions dépliables avec les réponses de chaque élève). Les liens admin s'écrivent `/admin/...` (le middleware réécrit vers `/app/admin/...`) ; un `href` en `/app/admin/...` fonctionne mais sort de la convention.
+- **Score** (`QuizSubmission::getScoreAttribute`) = QCM uniquement : `total` = nombre de QCM **du quiz**, `correct` = réponses `is_correct = true`. Un QCM **non répondu** (soumission partielle autorisée côté élève) a `is_correct` null et compte donc comme une erreur. Avant cette règle le total ne comptait que les QCM répondus : 1 bonne réponse sur 1 QCM traité sur 4 affichait 100 %. L'accesseur réutilise les relations `answers` et `quiz.questions` si elles sont chargées (`results()` fait `setRelation('quiz')->makeHidden('quiz')` pour éviter le N+1 sans dupliquer le quiz dans la réponse).
+- Toutes les routes `/admin/quizzes` sont dans le groupe **`role:admin`** : un professeur reçoit 403. Couvert par `QuizResultsTest` (dont le cas QCM non répondu, vérifié par mutation).
 
 ### Stripe
 - Clés lues depuis la table `settings` (pas `.env`) : `stripe_secret_key`, `stripe_webhook_secret`
