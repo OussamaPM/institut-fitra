@@ -6,7 +6,7 @@ import { messagesApi, classesApi } from '@/lib/api';
 import { Message, Conversation, User, MessageGroup, ClassModel, ClassStudent } from '@/lib/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { UserAvatar } from '@/components/ui';
+import { UserAvatar, LinkifiedText } from '@/components/ui';
 import { Paperclip, X, FileText, Music, Download, Send } from 'lucide-react';
 
 type ViewType = 'list' | 'chat' | 'new' | 'group-chat' | 'create-group' | 'group-settings';
@@ -1706,7 +1706,7 @@ export default function AdminMessages() {
                           : 'bg-gray-100 text-secondary rounded-bl-md'
                       }`}>
                         {msg.content && (
-                          <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                          <LinkifiedText text={msg.content} className="whitespace-pre-wrap break-words" linkClassName={isOwn ? 'underline underline-offset-2 break-all text-white hover:text-white/80' : 'underline underline-offset-2 break-all text-primary hover:text-primary/80'} />
                         )}
                         {msg.attachment_url && msg.attachment_type === 'image' && (
                           <img

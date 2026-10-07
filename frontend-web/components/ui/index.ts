@@ -14,3 +14,6 @@ export { default as Modal } from './Modal';
 export type { ModalProps } from './Modal';
 
 export { default as UserAvatar } from './UserAvatar';
+
+export { default as LinkifiedText, splitLinks } from './LinkifiedText';
+export type { TextSegment } from './LinkifiedText';

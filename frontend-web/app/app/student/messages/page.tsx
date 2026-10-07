@@ -6,7 +6,7 @@ import { messagesApi } from '@/lib/api';
 import { Message, User, MessageGroup, Conversation } from '@/lib/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { UserAvatar } from '@/components/ui';
+import { UserAvatar, LinkifiedText } from '@/components/ui';
 import { ChevronLeft, Send, Users, MessageCircle, Lock, Paperclip, X, FileText, Music, Download, UserPlus } from 'lucide-react';
 
 type ViewType = 'list' | 'chat' | 'direct';
@@ -615,7 +615,7 @@ export default function StudentMessages() {
                             : 'bg-white text-secondary rounded-bl-md shadow-sm'
                         }`}>
                           {msg.content && (
-                            <p className="whitespace-pre-wrap break-words text-sm md:text-base">{msg.content}</p>
+                            <LinkifiedText text={msg.content} className="whitespace-pre-wrap break-words text-sm md:text-base" linkClassName={isOwn ? 'underline underline-offset-2 break-all text-white hover:text-white/80' : 'underline underline-offset-2 break-all text-primary hover:text-primary/80'} />
                           )}
                           {msg.attachment_url && msg.attachment_type === 'image' && (
                             <img
@@ -805,7 +805,7 @@ export default function StudentMessages() {
                           : 'bg-white text-secondary rounded-bl-md shadow-sm'
                       }`}>
                         {msg.content && (
-                          <p className="whitespace-pre-wrap break-words text-sm md:text-base">{msg.content}</p>
+                          <LinkifiedText text={msg.content} className="whitespace-pre-wrap break-words text-sm md:text-base" linkClassName={isOwn ? 'underline underline-offset-2 break-all text-white hover:text-white/80' : 'underline underline-offset-2 break-all text-primary hover:text-primary/80'} />
                         )}
                         {msg.attachment_url && msg.attachment_type === 'image' && (
                           <img

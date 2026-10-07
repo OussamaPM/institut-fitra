@@ -338,6 +338,7 @@ POST   /api/student/quizzes/{quiz}/submit
 ### Messagerie — règles élèves
 - Les élèves **ne peuvent pas initier** de conversation, seulement répondre si un admin leur a écrit
 - Pièces jointes : images/PDF/audio, max 10 Mo → stockées sur Spaces
+- **Liens cliquables** : les URL (`https://…` ou `www.…`) contenues dans un message sont rendues cliquables à l'affichage par `components/ui/LinkifiedText.tsx` (nouvel onglet, ponctuation finale exclue du lien). Le texte stocké n'est pas modifié : les anciens messages en bénéficient aussi. Utilisé dans les bulles admin et élève (directs + groupes), pas dans les aperçus de la liste des conversations.
 - **Ajout de membres à un groupe** : la liste affiche **tous les utilisateurs** non-membres (élèves, profs **et admins**), avec badge « Admin »/« Prof ». L'avatar lit le bon profil selon le rôle (`student_profile` ou `teacher_profile`). Backend `MessageGroupController::addMembers` ne filtre pas par rôle (`exists:users,id`)
 
 ### Formulaires de suivi
