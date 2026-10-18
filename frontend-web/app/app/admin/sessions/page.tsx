@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   format,
   startOfMonth,
@@ -89,8 +89,6 @@ export default function SessionsPage() {
     return map;
   }, [classes]);
 
-  const isInitialLoad = useRef(true);
-
   const fetchSessions = useCallback(async () => {
     try {
       setLoading(true);
@@ -99,16 +97,9 @@ export default function SessionsPage() {
         per_page: 1000,
       });
 
-      const sessionsData = response.data || [];
-      setSessions(sessionsData);
-
-      // Auto-navigate to first session's month only on initial load
-      if (isInitialLoad.current && sessionsData.length > 0) {
-        const firstSessionDate = parseISO(sessionsData[0].scheduled_at);
-        setCurrentDate(firstSessionDate);
-        setSelectedDate(firstSessionDate);
-        isInitialLoad.current = false;
-      }
+      // Le calendrier reste sur la date du jour (mois / semaine / jour en cours) :
+      // il ne saute plus vers le mois de la première session chargée.
+      setSessions(response.data || []);
     } catch (error) {
       console.error('Error fetching sessions:', error);
     } finally {
