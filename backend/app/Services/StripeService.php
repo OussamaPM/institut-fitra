@@ -376,6 +376,10 @@ class StripeService
         $programLevelId = $metadata->program_level_id ?? null;
         $studentId = $metadata->student_id ?? null;
 
+        // Checkout ouvert avant un changement de classe et payé après : la commande
+        // doit suivre l'élève dans sa nouvelle classe, sinon il paie sans rien voir.
+        $classId = $this->followClassTransfer($classId, $studentId, $customerEmail);
+
         return DB::transaction(function () use ($session, $metadata, $programId, $classId, $customerEmail, $isReinscription, $levelNumber, $programLevelId, $studentId) {
             $totalAmount = (float) ($metadata->total_amount ?? ($session->amount_total / 100));
             $installmentsCount = (int) ($metadata->installments_count ?? 1);
@@ -548,6 +552,38 @@ class StripeService
         } catch (\Exception $e) {
             Log::error('Enrollment confirmation email error (Stripe): '.$e->getMessage());
         }
+    }
+
+    /**
+     * Classe effective d'une commande : si l'élève a quitté la classe des metadata par un
+     * changement de classe (inscription clôturée avec transferred_to_class_id), on suit la
+     * chaîne de transferts jusqu'à sa classe actuelle. Sinon la classe est inchangée.
+     */
+    private function followClassTransfer(mixed $classId, mixed $studentId, ?string $email): mixed
+    {
+        if (! $classId) {
+            return $classId;
+        }
+
+        $studentId = $studentId ?: User::where('email', $email)->value('id');
+        if (! $studentId) {
+            return $classId;
+        }
+
+        $visited = [];
+        while (! in_array((int) $classId, $visited, true)) {
+            $visited[] = (int) $classId;
+
+            $enrollment = Enrollment::where('student_id', $studentId)->where('class_id', $classId)->first();
+            if ($enrollment === null || $enrollment->status === 'active' || $enrollment->transferred_to_class_id === null) {
+                return $classId;
+            }
+
+            Log::info("Checkout: élève #{$studentId} transféré de la classe #{$classId} vers #{$enrollment->transferred_to_class_id}, commande rattachée à la nouvelle classe");
+            $classId = $enrollment->transferred_to_class_id;
+        }
+
+        return $classId;
     }
 
     /**

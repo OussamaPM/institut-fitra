@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, Button, Input, Badge, Modal } from '@/components/ui';
 import { classesApi } from '@/lib/api/classes';
-import { ClassModel, ClassStudent, ProgramSchedule } from '@/lib/types';
+import { ClassModel, ClassStudent, ClassTransferOptions, ClassTransferMissingLevel, ProgramSchedule } from '@/lib/types';
 
 const DAY_SHORT: Record<string, string> = {
   lundi: 'Lun',
@@ -34,6 +34,18 @@ const formatSchedule = (schedule?: ProgramSchedule[] | null): string => {
     .join(' · ');
 };
 
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  paid: 'Payé',
+  partial: 'En cours de paiement',
+  failed: 'Paiement échoué',
+  refunded: 'Remboursé',
+  pending: 'En attente',
+  cancelled: 'Annulée',
+};
+
+const levelLabel = (levelNumber: number, name?: string | null) =>
+  levelNumber <= 1 ? 'Niveau de base' : `Niveau ${levelNumber}${name ? ` — ${name}` : ''}`;
+
 const formatDate = (date?: string | null) =>
   date ? new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
@@ -55,6 +67,20 @@ export default function ClassStudentsPage() {
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [showChangeClassModal, setShowChangeClassModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<ClassStudent | null>(null);
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // Changement de classe
+  const [transferOptions, setTransferOptions] = useState<ClassTransferOptions | null>(null);
+  const [loadingTransferOptions, setLoadingTransferOptions] = useState(false);
+  const [targetClassId, setTargetClassId] = useState<number | null>(null);
+  const [confirmMissingLevels, setConfirmMissingLevels] = useState(false);
+  const [syncClassGroups, setSyncClassGroups] = useState(true);
+  const [notifyStudent, setNotifyStudent] = useState(true);
+  const [transferring, setTransferring] = useState(false);
+  const [transferError, setTransferError] = useState('');
+  const [serverMissingLevels, setServerMissingLevels] = useState<ClassTransferMissingLevel[]>([]);
+  // Élève dont la modale attend les options : une réponse arrivée pour un autre élève est ignorée
+  const transferStudentIdRef = useRef<number | null>(null);
 
   const loadClass = useCallback(async () => {
     try {
@@ -125,9 +151,40 @@ export default function ClassStudentsPage() {
     setShowRemoveModal(true);
   };
 
-  const openChangeClassModal = (student: ClassStudent) => {
+  const openChangeClassModal = async (student: ClassStudent) => {
     setSelectedStudent(student);
+    setTransferOptions(null);
+    setTargetClassId(null);
+    setConfirmMissingLevels(false);
+    setSyncClassGroups(true);
+    setNotifyStudent(true);
+    setTransferError('');
+    setServerMissingLevels([]);
     setShowChangeClassModal(true);
+    transferStudentIdRef.current = student.id;
+    await loadTransferOptions(student.id);
+  };
+
+  const loadTransferOptions = async (studentId: number) => {
+    try {
+      setLoadingTransferOptions(true);
+      const options = await classesApi.getTransferOptions(classId, studentId);
+      if (transferStudentIdRef.current !== studentId) return;
+      setTransferOptions(options);
+    } catch (err: any) {
+      if (transferStudentIdRef.current !== studentId) return;
+      console.error('Failed to load transfer options:', err);
+      setTransferError(err?.response?.data?.message || 'Impossible de charger les classes disponibles.');
+    } finally {
+      if (transferStudentIdRef.current === studentId) setLoadingTransferOptions(false);
+    }
+  };
+
+  const closeChangeClassModal = () => {
+    if (transferring) return;
+    transferStudentIdRef.current = null;
+    setShowChangeClassModal(false);
+    setSelectedStudent(null);
   };
 
   const handleRemoveStudent = async () => {
@@ -145,16 +202,43 @@ export default function ClassStudentsPage() {
   };
 
   const handleChangeClass = async () => {
-    if (!selectedStudent) return;
+    if (!selectedStudent || !targetClassId) return;
 
     try {
-      alert('Fonctionnalite de changement de classe en cours de developpement');
+      setTransferring(true);
+      setTransferError('');
+      const result = await classesApi.transferStudent(classId, selectedStudent.id, {
+        target_class_id: targetClassId,
+        confirm_missing_levels: confirmMissingLevels,
+        sync_class_groups: syncClassGroups,
+        notify_student: notifyStudent,
+      });
+      const targetName = transferOptions?.candidates.find((c) => c.id === targetClassId)?.name;
+      setSuccessMessage(
+        `${selectedStudent.first_name} ${selectedStudent.last_name} a été transféré(e) vers ${targetName ?? 'la nouvelle classe'}` +
+          ` (${result.transfer.orders_moved} commande${result.transfer.orders_moved > 1 ? 's' : ''} déplacée${result.transfer.orders_moved > 1 ? 's' : ''}).`
+      );
+      transferStudentIdRef.current = null;
       setShowChangeClassModal(false);
       setSelectedStudent(null);
-    } catch (err: unknown) {
+      loadStudents();
+      loadClass();
+    } catch (err: any) {
       console.error('Failed to change class:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Erreur lors du changement de classe.';
-      alert(errorMessage);
+      setTransferError(err?.response?.data?.message || 'Erreur lors du changement de classe.');
+      // Le serveur a détecté un niveau payé non activé que l'aperçu n'affichait pas : on l'affiche
+      if (err?.response?.data?.missing_levels) {
+        setServerMissingLevels(err.response.data.missing_levels);
+        setConfirmMissingLevels(false);
+      } else {
+        // Refus bloquant (classe devenue complète, élève déjà transféré…) : la situation a changé,
+        // on rafraîchit l'aperçu pour que la classe apparaisse non éligible.
+        setTargetClassId(null);
+        if (err?.response?.status === 404) loadStudents();
+        loadTransferOptions(selectedStudent.id);
+      }
+    } finally {
+      setTransferring(false);
     }
   };
 
@@ -168,6 +252,14 @@ export default function ClassStudentsPage() {
   ].filter((lvl, idx, arr) => arr.findIndex((l) => l.number === lvl.number) === idx);
 
   const isReinscriptionView = selectedLevel > 1;
+
+  const selectedCandidate = transferOptions?.candidates.find((c) => c.id === targetClassId) ?? null;
+  const missingLevels = serverMissingLevels.length > 0 ? serverMissingLevels : selectedCandidate?.missing_levels ?? [];
+  const canTransfer =
+    !!selectedCandidate &&
+    selectedCandidate.eligible &&
+    (missingLevels.length === 0 || confirmMissingLevels) &&
+    !transferring;
 
   if (isLoading) {
     return (
@@ -214,6 +306,15 @@ export default function ClassStudentsPage() {
           </div>
         )}
       </div>
+
+      {successMessage && (
+        <div className="mb-6 p-4 bg-success/10 border border-success rounded-lg flex items-start justify-between gap-4">
+          <p className="text-success text-sm">{successMessage}</p>
+          <button onClick={() => setSuccessMessage('')} className="text-success text-sm hover:underline">
+            Fermer
+          </button>
+        </div>
+      )}
 
       {/* Bloc info classe : période actuelle + horaires */}
       {classData && (
@@ -583,30 +684,148 @@ export default function ClassStudentsPage() {
       {/* Modal de changement de classe */}
       <Modal
         isOpen={showChangeClassModal}
-        onClose={() => setShowChangeClassModal(false)}
-        title="Changer l eleve de classe"
+        onClose={closeChangeClassModal}
+        title="Changer l'élève de classe"
+        size="lg"
       >
-        <div className="space-y-4">
+        <div className="space-y-5">
           <p className="text-gray-600">
-            Transferer{' '}
+            Transférer{' '}
             <span className="font-bold">
               {selectedStudent?.first_name} {selectedStudent?.last_name}
             </span>{' '}
-            vers une autre classe
+            vers une autre classe du programme <span className="font-semibold">{classData?.program?.name}</span>.
           </p>
-          <div>
-            <label className="block text-sm font-medium text-secondary mb-2">
-              Nouvelle classe
-            </label>
-            <select className="input w-full">
-              <option value="">Selectionner une classe...</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-4 pt-4">
-            <Button variant="outline" onClick={() => setShowChangeClassModal(false)}>
+
+          {loadingTransferOptions ? (
+            <p className="text-sm text-gray-500 py-4 text-center">Chargement des classes disponibles...</p>
+          ) : transferOptions && transferOptions.candidates.length === 0 ? (
+            <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-4">
+              Aucune autre classe ouverte (planifiée ou en cours) dans ce programme.
+            </p>
+          ) : transferOptions ? (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-secondary mb-2">Nouvelle classe</label>
+                <select
+                  className="input w-full"
+                  value={targetClassId ?? ''}
+                  onChange={(e) => {
+                    setTargetClassId(e.target.value ? Number(e.target.value) : null);
+                    setConfirmMissingLevels(false);
+                    setServerMissingLevels([]);
+                    setTransferError('');
+                  }}
+                >
+                  <option value="">Sélectionner une classe...</option>
+                  {transferOptions.candidates.map((c) => (
+                    <option key={c.id} value={c.id} disabled={!c.eligible}>
+                      {c.name} ({c.academic_year}) — {c.enrolled_count}
+                      {c.max_students ? `/${c.max_students}` : ''} élève{c.enrolled_count > 1 ? 's' : ''}
+                      {!c.eligible && c.blocking_reason ? ` — ${c.blocking_reason}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedCandidate && (
+                <div className="bg-gray-50 rounded-lg p-4 space-y-3 text-sm">
+                  <p className="font-medium text-secondary">Ce qui va se passer</p>
+                  <ul className="space-y-2 text-gray-700">
+                    <li>
+                      • L&apos;élève quitte <span className="font-medium">{transferOptions.source_class.name}</span> et rejoint{' '}
+                      <span className="font-medium">{selectedCandidate.name}</span> (actuellement au{' '}
+                      {levelLabel(selectedCandidate.current_level_number).toLowerCase()}). Sa date d&apos;inscription est conservée.
+                    </li>
+                    <li>
+                      •{' '}
+                      {transferOptions.orders.length === 0 ? (
+                        <>Aucune commande à déplacer (élève importé) : l&apos;accès au niveau de base repose sur l&apos;inscription.</>
+                      ) : (
+                        <>
+                          {transferOptions.orders.length} commande{transferOptions.orders.length > 1 ? 's' : ''} déplacée
+                          {transferOptions.orders.length > 1 ? 's' : ''} :{' '}
+                          {transferOptions.orders
+                            .map((o) => `${levelLabel(o.level_number, o.level_name)} (${ORDER_STATUS_LABELS[o.status] ?? o.status})`)
+                            .join(', ')}
+                        </>
+                      )}
+                    </li>
+                    <li>
+                      • L&apos;historique (présences, réponses aux quiz et formulaires de suivi) est conservé, mais l&apos;élève ne
+                      verra plus les séances, supports, replays et quiz de son ancienne classe.
+                    </li>
+                  </ul>
+
+                  {missingLevels.length > 0 && (
+                    <div className="p-3 bg-error/10 border border-error rounded-lg space-y-2">
+                      <p className="text-error font-medium">
+                        {missingLevels.map((l) => levelLabel(l.level_number, l.name)).join(', ')}{' '}
+                        {missingLevels.length > 1 ? 'ne sont pas activés' : "n'est pas activé"} sur {selectedCandidate.name}.
+                      </p>
+                      <label className="flex items-start gap-2 text-error cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5"
+                          checked={confirmMissingLevels}
+                          onChange={(e) => setConfirmMissingLevels(e.target.checked)}
+                        />
+                        <span>
+                          Je comprends que l&apos;élève n&apos;aura plus accès à ce contenu payé tant que le niveau n&apos;est pas activé sur
+                          cette classe.
+                        </span>
+                      </label>
+                    </div>
+                  )}
+
+                  <div className="space-y-2 pt-2 border-t border-gray-200">
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={syncClassGroups}
+                        onChange={(e) => setSyncClassGroups(e.target.checked)}
+                      />
+                      <span>
+                        Mettre à jour les groupes de messagerie de classe
+                        {(transferOptions.source_groups.length > 0 || selectedCandidate.target_groups.length > 0) && (
+                          <span className="block text-xs text-gray-500">
+                            {transferOptions.source_groups.length > 0 &&
+                              `Retiré de : ${transferOptions.source_groups.map((g) => g.name).join(', ')}. `}
+                            {selectedCandidate.target_groups.length > 0 &&
+                              `Ajouté à : ${selectedCandidate.target_groups.map((g) => g.name).join(', ')}.`}
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={notifyStudent}
+                        onChange={(e) => setNotifyStudent(e.target.checked)}
+                      />
+                      <span>Prévenir l&apos;élève par email (nouvelle classe et horaires)</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : null}
+
+          {transferError && (
+            <div className="p-3 bg-error/10 border border-error rounded-lg">
+              <p className="text-error text-sm">{transferError}</p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-4 pt-2">
+            <Button variant="outline" onClick={closeChangeClassModal} disabled={transferring}>
               Annuler
             </Button>
-            <Button onClick={handleChangeClass}>Changer de classe</Button>
+            <Button onClick={handleChangeClass} disabled={!canTransfer}>
+              {transferring ? 'Transfert...' : 'Confirmer le transfert'}
+            </Button>
           </div>
         </div>
       </Modal>

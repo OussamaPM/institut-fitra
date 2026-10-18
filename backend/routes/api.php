@@ -13,6 +13,7 @@ use App\Http\Controllers\Auth\MeController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ClassController;
+use App\Http\Controllers\ClassTransferController;
 use App\Http\Controllers\ContactMessageController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\LibraryController;
@@ -213,6 +214,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('/enrollments', [EnrollmentController::class, 'store']);
         Route::put('/enrollments/{enrollment}', [EnrollmentController::class, 'update']);
         Route::delete('/enrollments/{enrollment}', [EnrollmentController::class, 'destroy']);
+
+        // Changement de classe d'un élève (même programme)
+        Route::get('/admin/classes/{class}/students/{student}/transfer-options', [ClassTransferController::class, 'options']);
+        Route::post('/admin/classes/{class}/students/{student}/transfer', [ClassTransferController::class, 'transfer']);
 
         // Users management
         Route::get('/admin/users', [UserController::class, 'index']);

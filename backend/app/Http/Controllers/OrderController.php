@@ -197,9 +197,11 @@ class OrderController extends Controller
                         ], 422);
                     }
 
-                    // L'élève doit déjà être inscrit à cette classe
+                    // L'élève doit être inscrit (actif) à cette classe : pas une inscription
+                    // annulée ou clôturée par un changement de classe
                     $enrollment = Enrollment::where('student_id', $student->id)
                         ->where('class_id', $classId)
+                        ->where('status', 'active')
                         ->first();
                     if (! $enrollment) {
                         return response()->json([

@@ -1,5 +1,13 @@
 import apiClient from './client';
-import { ClassModel, PaginatedResponse, ClassStudent, Session } from '@/lib/types';
+import {
+  ClassModel,
+  PaginatedResponse,
+  ClassStudent,
+  Session,
+  ClassTransferOptions,
+  ClassTransferPayload,
+  ClassTransferResult,
+} from '@/lib/types';
 
 export const classesApi = {
   /**
@@ -32,6 +40,31 @@ export const classesApi = {
       params: level ? { level } : undefined,
     });
     return response.data.students;
+  },
+
+  /**
+   * Aperçu d'un changement de classe : classes candidates (même programme), commandes et groupes concernés (admin)
+   */
+  getTransferOptions: async (classId: number, studentId: number): Promise<ClassTransferOptions> => {
+    const response = await apiClient.get<{ transfer_options: ClassTransferOptions }>(
+      `/admin/classes/${classId}/students/${studentId}/transfer-options`
+    );
+    return response.data.transfer_options;
+  },
+
+  /**
+   * Transfère un élève vers une autre classe du même programme (admin)
+   */
+  transferStudent: async (
+    classId: number,
+    studentId: number,
+    payload: ClassTransferPayload
+  ): Promise<ClassTransferResult> => {
+    const response = await apiClient.post<ClassTransferResult>(
+      `/admin/classes/${classId}/students/${studentId}/transfer`,
+      payload
+    );
+    return response.data;
   },
 
   /**

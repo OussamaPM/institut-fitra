@@ -371,7 +371,13 @@ export default function StudentProfile() {
                           : enrollment.status === 'completed' ? 'bg-blue-100 text-blue-600'
                           : 'bg-gray-100 text-gray-600'
                         }`}>
-                          {enrollment.status === 'active' ? 'Actif' : enrollment.status === 'completed' ? 'Terminé' : 'Annulé'}
+                          {enrollment.status === 'active'
+                            ? 'Actif'
+                            : enrollment.status === 'completed'
+                              ? 'Terminé'
+                              : enrollment.transferred_to_class_id
+                                ? 'Changement de classe'
+                                : 'Annulé'}
                         </span>
                       </div>
                     </div>

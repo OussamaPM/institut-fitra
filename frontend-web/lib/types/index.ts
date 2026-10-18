@@ -240,10 +240,77 @@ export interface Enrollment {
   status: EnrollmentStatus;
   enrolled_at: string;
   expires_at?: string;
+  transferred_to_class_id?: number | null; // renseigné quand l'inscription a été clôturée par un changement de classe
+  transferred_at?: string | null;
   student?: User;
   class?: ClassModel;
   created_at?: string;
   updated_at?: string;
+}
+
+// Changement de classe (GET/POST /admin/classes/{id}/students/{student}/transfer…)
+export interface ClassTransferMissingLevel {
+  program_level_id: number;
+  level_number: number;
+  name: string | null;
+}
+
+export interface ClassTransferCandidate {
+  id: number;
+  name: string;
+  academic_year: string;
+  status: ClassStatus;
+  start_date: string | null;
+  end_date: string | null;
+  max_students: number | null;
+  enrolled_count: number;
+  is_full: boolean;
+  already_enrolled: boolean;
+  current_level_number: number;
+  missing_levels: ClassTransferMissingLevel[];
+  target_groups: { id: number; name: string }[];
+  eligible: boolean;
+  blocking_reason: string | null;
+}
+
+export interface ClassTransferOrderSummary {
+  id: number;
+  level_number: number;
+  program_level_id: number | null;
+  level_name: string | null;
+  status: string; // toutes les commandes de la classe sont déplacées, quel que soit leur statut
+  payment_method: PaymentMethod;
+  total_amount: string | number;
+}
+
+export interface ClassTransferOptions {
+  student: { id: number; first_name: string; last_name: string; email: string };
+  source_class: { id: number; name: string; academic_year: string };
+  orders: ClassTransferOrderSummary[];
+  has_base_order: boolean;
+  source_groups: { id: number; name: string }[];
+  candidates: ClassTransferCandidate[];
+}
+
+export interface ClassTransferPayload {
+  target_class_id: number;
+  confirm_missing_levels?: boolean;
+  sync_class_groups?: boolean;
+  notify_student?: boolean;
+}
+
+export interface ClassTransferResult {
+  message: string;
+  enrollment: Enrollment;
+  transfer: {
+    from_class_id: number;
+    to_class_id: number;
+    orders_moved: number;
+    groups_removed: number[];
+    groups_added: number[];
+    missing_levels: ClassTransferMissingLevel[];
+    student_notified: boolean; // email demandé (envoyé après le transfert ; un échec d'envoi n'annule rien)
+  };
 }
 
 export interface Attendance {

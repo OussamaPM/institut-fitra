@@ -68,7 +68,9 @@ export default function EnrollmentDetailsPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, transferred = false) => {
+    // Inscription clôturée par un changement de classe : ce n'est pas une annulation
+    if (status === 'cancelled' && transferred) return <Badge variant="info">Transférée</Badge>;
     const variants: Record<string, 'success' | 'error' | 'warning'> = {
       active: 'success',
       completed: 'warning',
@@ -302,7 +304,7 @@ export default function EnrollmentDetailsPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Statut actuel</span>
-                {getStatusBadge(enrollment.status)}
+                {getStatusBadge(enrollment.status, !!enrollment.transferred_to_class_id)}
               </div>
 
               <div className="border-t pt-4">

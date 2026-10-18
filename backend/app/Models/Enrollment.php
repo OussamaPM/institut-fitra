@@ -18,11 +18,14 @@ class Enrollment extends Model
         'status',
         'enrolled_at',
         'expires_at',
+        'transferred_to_class_id',
+        'transferred_at',
     ];
 
     protected $casts = [
         'enrolled_at' => 'datetime',
         'expires_at' => 'datetime',
+        'transferred_at' => 'datetime',
     ];
 
     public function student(): BelongsTo
@@ -33,6 +36,14 @@ class Enrollment extends Model
     public function class(): BelongsTo
     {
         return $this->belongsTo(ClassModel::class, 'class_id');
+    }
+
+    /**
+     * Classe d'arrivée quand cette inscription a été clôturée par un changement de classe
+     */
+    public function transferredToClass(): BelongsTo
+    {
+        return $this->belongsTo(ClassModel::class, 'transferred_to_class_id');
     }
 
     /**

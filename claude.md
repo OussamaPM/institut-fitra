@@ -137,6 +137,9 @@ GET/PUT/DELETE  /api/classes/{id}
 GET             /api/classes/{id}/students
 POST            /api/classes/{id}/generate-sessions
 POST            /api/classes/{id}/regenerate-sessions
+
+GET   /api/admin/classes/{class}/students/{student}/transfer-options   # aperçu : classes candidates, commandes, groupes
+POST  /api/admin/classes/{class}/students/{student}/transfer           # body: target_class_id, confirm_missing_levels, sync_class_groups, notify_student
 ```
 
 ### Sessions & Matériaux
@@ -223,6 +226,7 @@ POST  /api/student/tracking/{id}/submit
 ### Quiz
 ```
 GET    /api/admin/quizzes?session_id=X&class_id=Y # les deux requis — le quiz de la session (ou null) ; tout le bloc est sous role:admin
+GET    /api/admin/quizzes/overview                 # tous les quiz (sans questions) + questions_count, submissions_count, session.class.program
 POST   /api/admin/quizzes
 PUT    /api/admin/quizzes/{quiz}                   # questions modifiables seulement sans soumission
 DELETE /api/admin/quizzes/{quiz}
@@ -332,6 +336,21 @@ POST   /api/student/quizzes/{quiz}/submit
   - refus 422 (déjà inscrit, élève introuvable…) → aucun email
 - Conséquence côté élève : commande comptée par `ProgramLevelService` → le bloc de réinscription disparaît, ligne "Gratuit" affichée dans le suivi de paiement (`payment-history` renvoie `payment_method`)
 
+### Changement de classe d'un élève (`ClassTransferService`)
+- Depuis `/admin/classes/[id]/students` (icône flèches) : modale avec aperçu (commandes déplacées, groupes, niveaux manquants) avant confirmation. Admin uniquement.
+- **Même programme uniquement** ; cible `planned`/`ongoing`, non pleine, élève pas déjà actif dedans. Aperçu (`options`) et exécution (`transfer`) partagent les mêmes règles (`evaluate`).
+- Transaction + `lockForUpdate` (inscription source, classe cible) :
+  - inscription A → `cancelled` + `transferred_to_class_id` + `transferred_at` (jamais supprimée) ;
+  - inscription B créée ou réactivée (`updateOrCreate`), **`enrolled_at` d'origine conservé** ;
+  - **toutes les commandes** de l'élève sur A (même programme, tout statut) passent sur B + ligne dans `admin_notes`. Indispensable : les niveaux 2+ sont rattachés à `orders.class_id`, une inscription déplacée seule ferait perdre les niveaux payés ;
+  - groupes `type=class` : retrait de ceux de A, ajout à ceux de B (désactivable). Groupes `custom`/`program` intacts.
+- Niveau payé **non activé sur B** : 422 avec `missing_levels` tant que `confirm_missing_levels` n'est pas envoyé.
+- Email `ClassTransferMail` après commit (horaires = `classes.schedule`), désactivable.
+- Historique conservé en base (présences, soumissions de quiz, suivis), mais l'élève ne voit plus le contenu de A.
+- Garde-fous ailleurs : `EnrollmentController::update` refuse de réactiver une inscription transférée (422) ; montée de niveau manuelle exige une inscription **active** ; le webhook `checkout.session.completed` **suit la chaîne de transferts** (`followClassTransfer`) — un checkout ouvert sur A et payé après le transfert crée la commande sur B.
+- Libellé « Transférée » (admin) / « Changement de classe » (profil élève) au lieu d'« Annulée ».
+- Couvert par `ClassTransferTest` (30 tests, vérifiés par mutation).
+
 ### Liste des élèves par niveau (admin)
 - `GET /api/classes/{id}/students?level=N` : **niveau 1** → tous les inscrits actifs (inclut ceux montés de niveau, historique conservé) ; **niveau 2+** → uniquement les élèves réinscrits (commande `paid`/`partial` pour ce niveau), avec `payment_status`. Page admin élèves : pills de sélection de niveau + stats adaptées (réinscrits / payé / en cours)
 
@@ -347,7 +366,8 @@ POST   /api/student/quizzes/{quiz}/submit
 - **Brouillon / mise en pause** : `POST /student/tracking/{form}/save-draft` enregistre les réponses partielles (`updateOrCreate`) + pose `draft_saved_at` sur l'assignation, **sans** valider les questions obligatoires ni marquer `completed_at`. À la reprise, le `show` renvoie les réponses sauvegardées (pré-remplissage). UI élève : bouton "Mettre en pause", badge "Brouillon enregistré" + bouton "Reprendre". Le formulaire reste comptabilisé comme à compléter (`pending-count` se base sur `completed_at`).
 
 ### Quiz (un par session et par classe)
-- Géré depuis la modale de session admin (`admin/sessions/SessionDetailModal.tsx`) : création, modification, suppression, lien « Voir résultats ».
+- Géré via le composant partagé `components/admin/SessionQuizSection.tsx` (création, modification, suppression, lien « Voir résultats »), utilisé dans la modale de session du calendrier **et** dans la colonne **Quiz** de la page admin « Supports et Replays » (`/admin/supports`, alimentée par `GET /admin/quizzes/overview` ; les séances avec quiz sans support y ont leur ligne).
+- Calendrier admin (`/admin/sessions`) : s'ouvre toujours sur la date du jour (mois/semaine/jour en cours) — il ne saute plus au mois de la première séance renvoyée.
 - **Résultats admin** : page `/admin/quizzes/[id]/results` (score moyen, réussite par question, liste des soumissions dépliables avec les réponses de chaque élève). Les liens admin s'écrivent `/admin/...` (le middleware réécrit vers `/app/admin/...`) ; un `href` en `/app/admin/...` fonctionne mais sort de la convention.
 - **Score** (`QuizSubmission::getScoreAttribute`) = QCM uniquement : `total` = nombre de QCM **du quiz**, `correct` = réponses `is_correct = true`. Un QCM **non répondu** (soumission partielle autorisée côté élève) a `is_correct` null et compte donc comme une erreur. Avant cette règle le total ne comptait que les QCM répondus : 1 bonne réponse sur 1 QCM traité sur 4 affichait 100 %. L'accesseur réutilise les relations `answers` et `quiz.questions` si elles sont chargées (`results()` fait `setRelation('quiz')->makeHidden('quiz')` pour éviter le N+1 sans dupliquer le quiz dans la réponse).
 - Toutes les routes `/admin/quizzes` sont dans le groupe **`role:admin`** : un professeur reçoit 403. Couvert par `QuizResultsTest` (dont le cas QCM non répondu, vérifié par mutation).
@@ -417,7 +437,7 @@ Message    { id, sender_id, receiver_id?, group_id?, content, attachment_path?, 
 # Backend
 cd backend && php artisan serve --port=8001   # Port 8001
 php artisan migrate && php artisan db:seed
-php artisan test                               # 315 tests
+php artisan test                               # 369 tests
 ./vendor/bin/pint                              # Formatage
 
 # Frontend (vitrine + backoffice)

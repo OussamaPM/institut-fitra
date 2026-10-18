@@ -239,6 +239,43 @@ class StripeWebhookTest extends TestCase
         ]);
     }
 
+    /**
+     * Checkout de réinscription ouvert sur l'ancienne classe, payé après un changement de
+     * classe : la commande suit l'élève dans sa nouvelle classe et rien n'est recréé sur l'ancienne.
+     */
+    public function test_checkout_after_class_transfer_attaches_order_to_new_class(): void
+    {
+        [$program, $classA] = $this->makeProgram();
+        $classB = ClassModel::factory()->create(['program_id' => $program->id]);
+        $level = \App\Models\ProgramLevel::create([
+            'program_id' => $program->id, 'level_number' => 2, 'name' => 'Niveau 2', 'price' => 100, 'max_installments' => 1,
+        ]);
+        $student = User::factory()->create(['role' => 'student', 'email' => 'transfere@test.com']);
+        Enrollment::factory()->create([
+            'student_id' => $student->id, 'class_id' => $classA->id, 'status' => 'cancelled',
+            'transferred_to_class_id' => $classB->id, 'transferred_at' => now(),
+        ]);
+        Enrollment::factory()->create(['student_id' => $student->id, 'class_id' => $classB->id, 'status' => 'active']);
+
+        $this->webhook($this->checkoutEvent([
+            'program_id' => $program->id,
+            'class_id' => $classA->id,
+            'customer_email' => 'transfere@test.com',
+            'customer_first_name' => 'Ali',
+            'customer_last_name' => 'Test',
+            'total_amount' => 100,
+            'installments_count' => 1,
+            'is_reinscription' => 'true',
+            'level_number' => 2,
+            'program_level_id' => $level->id,
+            'student_id' => $student->id,
+        ]))->assertStatus(200);
+
+        $order = Order::where('student_id', $student->id)->firstOrFail();
+        $this->assertSame($classB->id, $order->class_id);
+        $this->assertSame('cancelled', Enrollment::where('student_id', $student->id)->where('class_id', $classA->id)->value('status'));
+    }
+
     // ─────────────────────────────────────────────────────────────
     // 3. IDEMPOTENCE (CRITIQUE)
     // ─────────────────────────────────────────────────────────────

@@ -187,6 +187,14 @@ class EnrollmentController extends Controller
         try {
             $validated = $request->validated();
 
+            // Une inscription clôturée par un changement de classe ne se réactive pas à la main :
+            // l'élève serait actif dans deux classes et ses commandes sont déjà sur la nouvelle.
+            if ($enrollment->transferred_to_class_id !== null && ($validated['status'] ?? null) === 'active') {
+                return response()->json([
+                    'message' => 'Cette inscription a été clôturée par un changement de classe. Utilisez « Changer de classe » depuis la liste des élèves pour ramener l\'élève.',
+                ], 422);
+            }
+
             $wasActive = $enrollment->status === 'active';
             $enrollment->update($validated);
             $enrollment->load(['student.studentProfile', 'class.program.teacher.teacherProfile']);
