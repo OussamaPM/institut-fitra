@@ -40,6 +40,21 @@ class QuizController extends Controller
     }
 
     /**
+     * Synthèse de tous les quiz (sans questions) : permet à la page Supports & Replays
+     * d'afficher la colonne Quiz en une seule requête.
+     */
+    public function overview(): JsonResponse
+    {
+        $quizzes = Quiz::query()
+            ->select(['id', 'session_id', 'class_id', 'title'])
+            ->with('session.class.program')
+            ->withCount(['questions', 'submissions'])
+            ->get();
+
+        return response()->json(['quizzes' => $quizzes]);
+    }
+
+    /**
      * Crée un quiz pour une session/classe
      */
     public function store(Request $request): JsonResponse

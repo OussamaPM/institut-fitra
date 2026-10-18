@@ -198,4 +198,45 @@ class QuizResultsTest extends TestCase
             ->getJson('/api/admin/quizzes/999999/results')
             ->assertNotFound();
     }
+
+    /** GET /api/admin/quizzes/overview — alimente la colonne Quiz de la page Supports & Replays. */
+    public function test_overview_lists_quizzes_with_counts_without_questions(): void
+    {
+        // Deuxième quiz, sans question ni soumission
+        $otherSession = Session::factory()->create([
+            'class_id' => $this->class->id,
+            'teacher_id' => $this->session->teacher_id,
+        ]);
+        $empty = Quiz::create([
+            'session_id' => $otherSession->id,
+            'class_id' => $this->class->id,
+            'title' => 'Quiz vide',
+            'created_by' => $this->admin->id,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->getJson('/api/admin/quizzes/overview')
+            ->assertOk()
+            ->assertJsonCount(2, 'quizzes')
+            ->assertJsonMissingPath('quizzes.0.questions');
+
+        $byId = collect($response->json('quizzes'))->keyBy('id');
+        $this->assertSame($this->session->id, $byId[$this->quiz->id]['session_id']);
+        $this->assertSame($this->class->id, $byId[$this->quiz->id]['class_id']);
+        $this->assertSame(3, $byId[$this->quiz->id]['questions_count']);
+        $this->assertSame(1, $byId[$this->quiz->id]['submissions_count']);
+        // La séance est chargée (avec sa classe) pour construire les lignes « sans support »
+        $this->assertSame($this->class->id, $byId[$this->quiz->id]['session']['class']['id']);
+        $this->assertSame(0, $byId[$empty->id]['questions_count']);
+        $this->assertSame(0, $byId[$empty->id]['submissions_count']);
+    }
+
+    public function test_teacher_cannot_get_overview(): void
+    {
+        $teacher = User::factory()->create(['role' => 'teacher']);
+
+        $this->actingAs($teacher)
+            ->getJson('/api/admin/quizzes/overview')
+            ->assertForbidden();
+    }
 }

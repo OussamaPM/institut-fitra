@@ -252,6 +252,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
         // Quiz management (admin)
         Route::get('/admin/quizzes', [QuizController::class, 'index']);
+        Route::get('/admin/quizzes/overview', [QuizController::class, 'overview']);
         Route::post('/admin/quizzes', [QuizController::class, 'store']);
         Route::put('/admin/quizzes/{quiz}', [QuizController::class, 'update']);
         Route::delete('/admin/quizzes/{quiz}', [QuizController::class, 'destroy']);

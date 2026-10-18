@@ -1,5 +1,5 @@
 import apiClient from './client';
-import { Quiz, QuizSubmission, CreateQuizData, SubmitQuizData, QuizScore } from '@/lib/types';
+import { Quiz, QuizOverview, QuizSubmission, CreateQuizData, SubmitQuizData, QuizScore } from '@/lib/types';
 
 const quizzesApi = {
   // ── Admin ──────────────────────────────────────────────────────────────────
@@ -9,6 +9,11 @@ const quizzesApi = {
       params: { session_id: sessionId, class_id: classId },
     });
     return response.data.quiz;
+  },
+
+  getOverview: async (): Promise<QuizOverview[]> => {
+    const response = await apiClient.get('/admin/quizzes/overview');
+    return response.data.quizzes;
   },
 
   create: async (data: CreateQuizData): Promise<Quiz> => {

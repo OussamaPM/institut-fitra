@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { SessionMaterial, Session } from '@/lib/types';
+import { SessionMaterial, Session, QuizOverview } from '@/lib/types';
 import materialsApi, { MAX_MATERIAL_BYTES as MAX_FILE_BYTES } from '@/lib/api/materials';
 import { openSignedUrl } from '@/lib/open-signed-url';
 import sessionsApi from '@/lib/api/sessions';
+import quizzesApi from '@/lib/api/quizzes';
+import SessionQuizSection from '@/components/admin/SessionQuizSection';
 import { Button, Badge, Modal } from '@/components/ui';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -24,19 +26,27 @@ import {
   Plus,
   Upload,
   Save,
+  HelpCircle,
 } from 'lucide-react';
 
-// Type unifié pour afficher supports et sessions avec replay
+// Type unifié pour afficher les supports et les sessions sans support (replay et/ou quiz)
 interface TableRow {
   id: string;
-  type: 'material' | 'replay-only';
+  type: 'material' | 'no-material';
   material?: SessionMaterial;
   session: Session;
 }
 
+const quizKey = (session: Pick<Session, 'id' | 'class_id'>) => `${session.id}-${session.class_id}`;
+
+const indexQuizzes = (quizzes: QuizOverview[]) =>
+  Object.fromEntries(quizzes.map((q) => [`${q.session_id}-${q.class_id}`, q]));
+
 export default function SupportsPage() {
   const [materials, setMaterials] = useState<SessionMaterial[]>([]);
-  const [sessionsWithReplay, setSessionsWithReplay] = useState<Session[]>([]);
+  const [sessionsWithoutMaterial, setSessionsWithoutMaterial] = useState<Session[]>([]);
+  // Quiz indexés par "sessionId-classId" (un quiz par session et par classe)
+  const [quizzesByKey, setQuizzesByKey] = useState<Record<string, QuizOverview>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('');
@@ -55,6 +65,10 @@ export default function SupportsPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
+
+  // Quiz modal state
+  const [quizSession, setQuizSession] = useState<Session | null>(null);
+  const [quizChanged, setQuizChanged] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -77,24 +91,47 @@ export default function SupportsPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      // Fetch materials and sessions in parallel
-      const [materialsResponse, sessionsResponse] = await Promise.all([
+      // Fetch materials, sessions and quizzes in parallel
+      const [materialsResponse, sessionsResponse, quizzes] = await Promise.all([
         materialsApi.getAll({ per_page: 500 }),
         sessionsApi.getAll({ per_page: 500 }),
+        // Un échec ici ne doit pas vider la page : la colonne Quiz reste simplement vide
+        quizzesApi.getOverview().catch((error) => {
+          console.error('Error fetching quizzes:', error);
+          return [] as QuizOverview[];
+        }),
       ]);
 
       setMaterials(materialsResponse.data || []);
+      const byKey = indexQuizzes(quizzes);
+      setQuizzesByKey(byKey);
 
-      // Filter sessions that have replay but no materials
+      // Sessions sans support mais avec un replay ou un quiz : elles ont aussi leur ligne.
+      // Les séances à quiz viennent de l'overview, qui n'est pas limitée aux 500 sessions listées.
       const materialSessionIds = new Set((materialsResponse.data || []).map(m => m.session_id));
-      const sessionsOnlyWithReplay = (sessionsResponse.data || []).filter(
-        s => s.replay_url && !materialSessionIds.has(s.id)
-      );
-      setSessionsWithReplay(sessionsOnlyWithReplay);
+      const withoutMaterial = new Map<number, Session>();
+      (sessionsResponse.data || [])
+        .filter(s => s.replay_url && !materialSessionIds.has(s.id))
+        .forEach(s => withoutMaterial.set(s.id, s));
+      quizzes.forEach(q => {
+        if (q.session && !materialSessionIds.has(q.session_id) && !withoutMaterial.has(q.session_id)) {
+          withoutMaterial.set(q.session_id, q.session);
+        }
+      });
+      setSessionsWithoutMaterial(Array.from(withoutMaterial.values()));
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  /** Les lignes ne sont recalculées qu'à la fermeture : l'admin peut recréer un quiz supprimé dans la foulée. */
+  const closeQuizModal = () => {
+    setQuizSession(null);
+    if (quizChanged) {
+      setQuizChanged(false);
+      fetchData();
     }
   };
 
@@ -217,6 +254,8 @@ export default function SupportsPage() {
     }
   };
 
+  const replayOnlyCount = sessionsWithoutMaterial.filter((s) => s.replay_url).length;
+
   // Créer les lignes du tableau combinant materials et sessions avec replay seul
   const tableRows: TableRow[] = [
     // Lignes des materials
@@ -226,10 +265,10 @@ export default function SupportsPage() {
       material,
       session: material.session!,
     })),
-    // Lignes des sessions avec replay mais sans support
-    ...sessionsWithReplay.map((session) => ({
-      id: `replay-${session.id}`,
-      type: 'replay-only' as const,
+    // Lignes des sessions sans support (replay et/ou quiz)
+    ...sessionsWithoutMaterial.map((session) => ({
+      id: `session-${session.id}`,
+      type: 'no-material' as const,
       session,
     })),
   ];
@@ -245,11 +284,12 @@ export default function SupportsPage() {
       session?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       session?.class?.name?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Filtre par type: si "replay-only" sélectionné, montrer les sessions sans support
     const matchesType =
       filterType === '' ||
-      (filterType === 'replay-only' && row.type === 'replay-only') ||
-      (filterType !== 'replay-only' && material?.file_type === filterType);
+      (filterType === 'no-material' && row.type === 'no-material') ||
+      (filterType === 'quiz' && !!quizzesByKey[quizKey(session)]) ||
+      (filterType === 'no-quiz' && !quizzesByKey[quizKey(session)]) ||
+      material?.file_type === filterType;
 
     return matchesSearch && matchesType;
   });
@@ -301,7 +341,7 @@ export default function SupportsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-secondary">
-                {materials.filter((m) => m.session?.replay_url).length + sessionsWithReplay.length}
+                {materials.filter((m) => m.session?.replay_url).length + replayOnlyCount}
               </p>
               <p className="text-sm text-gray-600">Total replays</p>
             </div>
@@ -327,7 +367,7 @@ export default function SupportsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-secondary">
-                {sessionsWithReplay.length}
+                {replayOnlyCount}
               </p>
               <p className="text-sm text-gray-600">Replays sans support</p>
             </div>
@@ -360,7 +400,9 @@ export default function SupportsPage() {
               <option value="">Tous</option>
               <option value="pdf">PDF</option>
               <option value="image">Images</option>
-              <option value="replay-only">Replays sans support</option>
+              <option value="no-material">Séances sans support</option>
+              <option value="quiz">Avec quiz</option>
+              <option value="no-quiz">Sans quiz</option>
             </select>
           </div>
         </div>
@@ -377,6 +419,9 @@ export default function SupportsPage() {
                 </th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
                   Replay
+                </th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
+                  Quiz
                 </th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
                   Session
@@ -398,7 +443,7 @@ export default function SupportsPage() {
             <tbody className="divide-y">
               {sortedRows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     {searchTerm || filterType
                       ? 'Aucun élément ne correspond aux critères de recherche'
                       : 'Aucun support ou replay disponible'}
@@ -406,7 +451,7 @@ export default function SupportsPage() {
                 </tr>
               ) : (
                 sortedRows.map((row) => (
-                  <tr key={row.id} className={`hover:bg-gray-50 ${row.type === 'replay-only' ? 'bg-purple-50/30' : ''}`}>
+                  <tr key={row.id} className={`hover:bg-gray-50 ${row.type === 'no-material' ? 'bg-purple-50/30' : ''}`}>
                     {/* Colonne Support */}
                     <td className="px-6 py-4">
                       {row.material ? (
@@ -457,6 +502,37 @@ export default function SupportsPage() {
                           Ajouter un replay
                         </button>
                       )}
+                    </td>
+                    {/* Colonne Quiz */}
+                    <td className="px-6 py-4">
+                      {(() => {
+                        const quiz = quizzesByKey[quizKey(row.session)];
+                        return quiz ? (
+                          <button
+                            onClick={() => setQuizSession(row.session)}
+                            className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
+                          >
+                            <HelpCircle size={24} className="text-amber-500 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="font-medium text-gray-900 truncate max-w-[180px]" title={quiz.title}>
+                                {quiz.title}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {quiz.questions_count} question{quiz.questions_count > 1 ? 's' : ''} ·{' '}
+                                {quiz.submissions_count} soumission{quiz.submissions_count > 1 ? 's' : ''}
+                              </p>
+                            </div>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setQuizSession(row.session)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-primary/10 hover:text-primary transition-colors"
+                          >
+                            <Plus size={14} />
+                            Ajouter un quiz
+                          </button>
+                        );
+                      })()}
                     </td>
                     {/* Colonne Session */}
                     <td className="px-6 py-4">
@@ -622,6 +698,28 @@ export default function SupportsPage() {
                 )}
               </Button>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Quiz Modal : même gestion que dans la modale de session du calendrier */}
+      {quizSession && (
+        <Modal
+          isOpen={!!quizSession}
+          onClose={closeQuizModal}
+          title="Quiz de la séance"
+          size="lg"
+        >
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <p className="text-sm text-gray-600">Session :</p>
+              <p className="font-medium">{quizSession.title}</p>
+              <p className="text-sm text-gray-500">
+                {quizSession.scheduled_at && formatParis(quizSession.scheduled_at, 'EEEE d MMMM yyyy')}
+                {quizSession.class?.name && ` · ${quizSession.class.name}`}
+              </p>
+            </div>
+            <SessionQuizSection session={quizSession} startInCreateMode onChange={() => setQuizChanged(true)} />
           </div>
         </Modal>
       )}

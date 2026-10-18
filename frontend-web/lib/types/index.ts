@@ -537,6 +537,18 @@ export interface QuizQuestion {
   updated_at?: string;
 }
 
+/** Synthèse d'un quiz (GET /admin/quizzes/overview) — colonne Quiz de Supports & Replays. */
+export interface QuizOverview {
+  id: number;
+  session_id: number;
+  class_id: number;
+  title: string;
+  questions_count: number;
+  submissions_count: number;
+  // Séance chargée côté serveur : une séance avec quiz a sa ligne même hors des 500 sessions listées
+  session?: Session;
+}
+
 export interface Quiz {
   id: number;
   session_id: number;
